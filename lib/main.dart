@@ -3,7 +3,6 @@ import 'package:project_1_cse_3240/features/splash/splash_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async{
-
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
