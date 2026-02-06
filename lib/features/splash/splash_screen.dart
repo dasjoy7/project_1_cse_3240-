@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-
 import 'package:project_1_cse_3240/features/auth/pages/login_page.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
-
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  
   double progressValue = 0.0;
 
   @override
+
   void initState() {
     super.initState();
     startLoading();
@@ -36,7 +34,7 @@ class _SplashScreenState extends State<SplashScreen> {
     });
   }
 
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) { //build() only describes UI
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       body: Padding(

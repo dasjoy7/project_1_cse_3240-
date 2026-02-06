@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:project_1_cse_3240/contest_screen.dart';
+import 'package:project_1_cse_3240/contest/contest_page.dart';
 import 'package:project_1_cse_3240/features/auth/pages/login_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -13,14 +13,27 @@ class MainWrapper extends StatefulWidget {
 class _MainWrapperState extends State<MainWrapper> {
   int _selectedIndex = 0;
 
-  // UPDATED: Replaced placeholder with ContestScreen()
   final List<Widget> _screens = [
     const Center(child: Text("Home")),
     const Center(child: Text("Problems")),
     const Center(child: Text("Leaderboard")),
-    const ContestScreen(), // This now shows your Upcoming/Completed tabs
+    const ContestPage(),
     const Center(child: Text("Profile")),
   ];
+
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: 0);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,13 +44,6 @@ class _MainWrapperState extends State<MainWrapper> {
         backgroundColor: const Color(0xFF1E88E5),
         foregroundColor: Colors.white,
         centerTitle: true,
-        // Optional: Add a profile picture shortcut to the AppBar
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
-          ),
-        ],
       ),
       drawer: Drawer(
         child: ListView(
@@ -52,12 +58,20 @@ class _MainWrapperState extends State<MainWrapper> {
                   CircleAvatar(
                     backgroundColor: Colors.white,
                     radius: 30,
-                    child: Icon(Icons.person, color: Color(0xFF1E88E5), size: 35),
+                    child: Icon(
+                      Icons.person,
+                      color: Color(0xFF1E88E5),
+                      size: 35,
+                    ),
                   ),
                   SizedBox(height: 10),
                   Text(
                     "Math Athlete",
-                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -72,16 +86,23 @@ class _MainWrapperState extends State<MainWrapper> {
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text("Logout", style: TextStyle(color: Colors.red)),
               onTap: () async {
-                bool confirm = await showDialog(
+                bool confirm =
+                    await showDialog(
                       context: context,
                       builder: (context) => AlertDialog(
                         title: const Text("Logout"),
                         content: const Text("Are you sure you want to exit?"),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text("Cancel"),
+                          ),
                           TextButton(
                             onPressed: () => Navigator.pop(context, true),
-                            child: const Text("Logout", style: TextStyle(color: Colors.red)),
+                            child: const Text(
+                              "Logout",
+                              style: TextStyle(color: Colors.red),
+                            ),
                           ),
                         ],
                       ),
@@ -93,7 +114,9 @@ class _MainWrapperState extends State<MainWrapper> {
                   if (mounted) {
                     Navigator.pushAndRemoveUntil(
                       context,
-                      MaterialPageRoute(builder: (context) => const LoginPage()),
+                      MaterialPageRoute(
+                        builder: (context) => const LoginPage(),
+                      ),
                       (route) => false,
                     );
                   }
@@ -103,11 +126,17 @@ class _MainWrapperState extends State<MainWrapper> {
           ],
         ),
       ),
-      // IndexedStack keeps the state of your tabs alive
-      body: IndexedStack(
-        index: _selectedIndex,
+      
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
         children: _screens,
       ),
+
       bottomNavigationBar: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
         decoration: BoxDecoration(
@@ -124,7 +153,12 @@ class _MainWrapperState extends State<MainWrapper> {
           borderRadius: BorderRadius.circular(30),
           child: BottomNavigationBar(
             currentIndex: _selectedIndex,
-            onTap: (index) => setState(() => _selectedIndex = index),
+            onTap: (index) {
+              setState(() {
+                _selectedIndex = index;
+              });
+              _pageController.jumpToPage(index); // Navigate to selected page
+            },
             type: BottomNavigationBarType.fixed,
             backgroundColor: Colors.white,
             selectedItemColor: const Color(0xFF1E88E5),
@@ -132,11 +166,31 @@ class _MainWrapperState extends State<MainWrapper> {
             showSelectedLabels: true,
             showUnselectedLabels: false,
             items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: "Home"),
-              BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), activeIcon: Icon(Icons.assignment), label: "Problems"),
-              BottomNavigationBarItem(icon: Icon(Icons.leaderboard_outlined), activeIcon: Icon(Icons.leaderboard), label: "Rank"),
-              BottomNavigationBarItem(icon: Icon(Icons.emoji_events_outlined), activeIcon: Icon(Icons.emoji_events), label: "Contest"),
-              BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: "Profile"),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home),
+                label: "Home",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.assignment_outlined),
+                activeIcon: Icon(Icons.assignment),
+                label: "Problems",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.leaderboard_outlined),
+                activeIcon: Icon(Icons.leaderboard),
+                label: "Rank",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.emoji_events_outlined),
+                activeIcon: Icon(Icons.emoji_events),
+                label: "Contest",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_outline),
+                activeIcon: Icon(Icons.person),
+                label: "Profile",
+              ),
             ],
           ),
         ),

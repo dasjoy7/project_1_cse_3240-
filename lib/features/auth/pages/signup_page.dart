@@ -12,6 +12,7 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
+
   bool _isLoading = false;
   bool _isPasswordVisible = false;
 
@@ -23,7 +24,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final _institutionController = TextEditingController();
 
   // Selection States
-  int _selectedClass = 9; // Default class
+  int _selectedClass = 9;
   String? _selectedDivision;
   String? _selectedDistrict;
 
@@ -65,6 +66,7 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     setState(() => _isLoading = true);
+
     final supabase = Supabase.instance.client;
 
     try {
@@ -90,7 +92,7 @@ class _SignUpPageState extends State<SignUpPage> {
         'institution': _institutionController.text.trim(),
       });
 
-      if (!mounted) return;
+      if (!mounted) return; //Every StatefulWidget has a boolean property called mounted.
 
       CommonUI.showSnackBar(context, "Success! Check your email to verify account.");
 
@@ -98,7 +100,7 @@ class _SignUpPageState extends State<SignUpPage> {
         context,
         MaterialPageRoute(builder: (_) => const LoginPage()),
       );
-    } on PostgrestException catch (e) {
+    } on PostgrestException catch (e) { //Handles errors from Supabase database operations (like inserting into profiles table).
       if (mounted) CommonUI.showSnackBar(context, "Database Error: ${e.message}", isError: true);
     } on AuthException catch (e) {
       if (mounted) CommonUI.showSnackBar(context, e.message, isError: true);
@@ -136,7 +138,7 @@ class _SignUpPageState extends State<SignUpPage> {
               CommonUI.buildLabel("Full Name"),
               TextFormField(
                 controller: _nameController,
-                validator: (v) => v!.isEmpty ? "Full name is required" : null,
+                validator: (v)=>v!.isEmpty? "Full name is required": null, //v! bang operator (null safety)
                 decoration: CommonUI.modernInputStyle(hintText: "Enter your full name", prefixIcon: Icons.person_outline),
               ),
 
@@ -168,7 +170,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 height: 50,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: 7, // Classes 6 to 12
+                  itemCount: 7,
                   itemBuilder: (context, index) {
                     int classNum = index + 6;
                     bool selected = _selectedClass == classNum;
