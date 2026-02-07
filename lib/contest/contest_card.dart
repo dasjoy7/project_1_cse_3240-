@@ -7,7 +7,8 @@ class ContestCard extends StatelessWidget {
   final String time;
   final String category;
   final String duration;
-  final bool isRunning;  // New field to check if contest is running
+  final bool isRunning;  // Field to check if the contest is running
+  final bool isCompleted;  // Field to check if the contest is completed
 
   const ContestCard({
     Key? key,
@@ -18,6 +19,7 @@ class ContestCard extends StatelessWidget {
     required this.category,
     required this.duration,
     required this.isRunning,  // Add this to receive the running status
+    required this.isCompleted,  // Add this to receive the completed status
   }) : super(key: key);
 
   @override
@@ -93,8 +95,8 @@ class ContestCard extends StatelessWidget {
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
 
-              // Running sign
-              if (isRunning)
+              // Show Running status if the contest is running
+              if (isRunning && !isCompleted)
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Chip(
@@ -102,7 +104,20 @@ class ContestCard extends StatelessWidget {
                       'Running',
                       style: TextStyle(color: Colors.white),
                     ),
-                    backgroundColor: Colors.green,
+                    backgroundColor: Colors.green, // Green for running
+                  ),
+                ),
+              
+              // Show Completed status if the contest is completed
+              if (isCompleted)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Chip(
+                    label: Text(
+                      'Completed',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    backgroundColor: Colors.red, // Red for completed
                   ),
                 ),
             ],
