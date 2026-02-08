@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:project_1_cse_3240/contest/contest_page.dart';
 import 'package:project_1_cse_3240/features/auth/pages/login_page.dart';
+import 'package:project_1_cse_3240/problems_and_profile/problems/screens/problem_list_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MainWrapper extends StatefulWidget {
@@ -15,7 +16,7 @@ class _MainWrapperState extends State<MainWrapper> {
 
   final List<Widget> _screens = [
     const Center(child: Text("Home")),
-    const Center(child: Text("Problems")),
+    const ProblemListPage(),
     const Center(child: Text("Leaderboard")),
     const ContestPage(),
     const Center(child: Text("Profile")),
