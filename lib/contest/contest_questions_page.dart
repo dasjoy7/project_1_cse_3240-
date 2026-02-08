@@ -74,7 +74,9 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
       // If time is up, cancel the timer
       if (_remainingTime.inSeconds <= 0) {
         _timer.cancel();
-        _showTimeUpDialog();  // Show dialog when time ends
+        setState(() {
+          _isContestCompleted = true; // Contest has completed
+        });
       }
     });
   }
@@ -96,28 +98,6 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
       _remainingTime = Duration(seconds: 0);
       _isContestCompleted = true; // Contest has completed
     }
-  }
-
-  // Show a pop-up dialog when the contest ends
-  void _showTimeUpDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Contest Completed'),
-          content: Text('The contest has ended. Would you like to go back to upcoming contests?'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);  // Close the dialog
-                Navigator.pop(context);  // Navigate back to the contest page
-              },
-              child: Text('Go Back'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
