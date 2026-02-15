@@ -24,9 +24,8 @@ class ContestQuestionsPage extends StatefulWidget {
 }
 
 class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
-
   List<Map<String, dynamic>> questions = [];
-  Map<String, bool?> answerStatus = {}; // Store the correctness of each answer
+  Map<String, bool?> answerStatus = {};
 
   late Timer _timer;
   late Duration _remainingTime;
@@ -41,7 +40,6 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
     _startCountdown();
   }
 
-  // Load questions from Supabase
   Future<void> _loadQuestions() async {
     try {
       final response = await Supabase.instance.client
@@ -52,16 +50,50 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
       setState(() {
         questions = List<Map<String, dynamic>>.from(response);
         for (var question in questions) {
-          answerStatus[question['id'].toString()] =
-              null; // Default status for all answers
+          answerStatus[question['id'].toString()] = null;
         }
       });
+
+      await _loadAnswerStatus(); // ✅ Load saved marks after questions are ready
     } catch (e) {
       print('Error loading questions: $e');
     }
   }
 
-  // Start countdown timer
+  Future<void> _loadAnswerStatus() async {
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      final response = await Supabase.instance.client
+          .from('contest_question_submission')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .eq('contest_id', widget.contestId)
+          .maybeSingle();
+
+      if (response == null) return;
+
+      setState(() {
+        for (var question in questions) {
+          final serial = question['serial_number'];
+          final value = response['serial_$serial'];
+          final questionId = question['id'].toString();
+
+          if (value == 1) {
+            answerStatus[questionId] = true;
+          } else if (value == 0) {
+            answerStatus[questionId] = false;
+          } else {
+            answerStatus[questionId] = null;
+          }
+        }
+      });
+    } catch (e) {
+      print('Error loading answer status: $e');
+    }
+  }
+
   void _startCountdown() {
     _remainingTime = widget.contestStartTime.difference(DateTime.now());
 
@@ -72,7 +104,6 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
       });
     }
 
-    // Start a periodic timer to update every second
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       setState(() {
         _updateRemainingTime();
@@ -107,7 +138,6 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
     super.dispose();
   }
 
-  // Format remaining time
   String _formatTime(Duration duration) {
     int hours = duration.inHours;
     int minutes = duration.inMinutes % 60;
@@ -124,8 +154,8 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.contestSubtitle, style: TextStyle(fontSize: 18)),
-            SizedBox(height: 20),
+            Text(widget.contestSubtitle, style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 20),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -146,9 +176,10 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
                 children: [
                   Text(
                     _isContestStarted ? 'Time Remaining' : 'Starts In',
-                    style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+                    style:
+                        TextStyle(fontSize: 16, color: Colors.grey.shade700),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     _formatTime(_remainingTime),
                     style: TextStyle(
@@ -163,12 +194,12 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
                 ],
               ),
             ),
-            SizedBox(height: 20),
-            Text(
-              'Questions: ',
+            const SizedBox(height: 20),
+            const Text(
+              'Questions:',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Expanded(
               child: ListView.builder(
                 itemCount: questions.length,
@@ -177,25 +208,25 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
                   final questionName = question['name'] ?? 'No Name';
                   final questionText = question['question_text'] ?? 'No Text';
                   final questionId = question['id'].toString();
+                  final status = answerStatus[questionId];
 
                   return Card(
-                    margin: EdgeInsets.symmetric(vertical: 10),
+                    margin: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     child: ListTile(
                       title: Text(
                         '${question['serial_number']}. $questionName',
                       ),
                       subtitle: Text(questionText),
-                      trailing: answerStatus[questionId] == true
-                          ? Icon(
-                              Icons.check_circle,
-                              color: Colors.green,
-                            ) // Green check for correct
-                          : answerStatus[questionId] == false
-                          ? Icon(
-                              Icons.cancel,
-                              color: Colors.red,
-                            ) // Red cross for incorrect
-                          : null, // No icon if unanswered
+                      trailing: status == true
+                          ? const Icon(Icons.check_circle,
+                              color: Colors.green, size: 28)
+                          : status == false
+                              ? const Icon(Icons.cancel,
+                                  color: Colors.red, size: 28)
+                              : null,
                       onTap: () async {
                         final result = await Navigator.push(
                           context,
@@ -203,13 +234,14 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
                             builder: (context) => FullQuestionPage(
                               questionId: questionId,
                               isContestCompleted: () => _isContestCompleted,
+                              contestId: widget.contestId,
                             ),
                           ),
                         );
 
                         if (result != null) {
                           setState(() {
-                            answerStatus[questionId] = result;
+                            answerStatus[questionId] = result as bool;
                           });
                         }
                       },
