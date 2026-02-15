@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:async'; // Import for Timer
-
+import 'dart:async';
 import 'contest_card.dart';
 import 'contest_questions_page.dart';
 
@@ -13,12 +12,16 @@ class ContestPage extends StatefulWidget {
 }
 
 class _ContestPageState extends State<ContestPage> {
+
   final SupabaseClient supabase = Supabase.instance.client;
+
   List<Map<String, dynamic>> contests = [];
   List<Map<String, dynamic>> upcomingContests = [];
   List<Map<String, dynamic>> completedContests = [];
-  bool isLoading = true;
-  late Timer _timer; // Timer to check for time periodically
+  bool isLoading = false;
+
+  late Timer _timer;
+  late String userCategory;
 
   @override
   void initState() {
@@ -44,14 +47,32 @@ class _ContestPageState extends State<ContestPage> {
   // Fetch contests from Supabase
   Future<void> fetchContests() async {
     try {
-      final response = await supabase
-          .from('contests')
-          .select('*'); // Ensure the table is called 'contests'
+      final currentUser = supabase.auth.currentUser;
 
+      if (currentUser == null) {
+        // Handle case where the user is not authenticated
+        print('User is not authenticated');
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
+
+      // Fetch the user's category from the profile table
+      final userResponse = await supabase
+          .from('profile')
+          .select('category')
+          .eq('id', currentUser.id) // Use currentUser.id safely here
+          .single();
+
+      userCategory = userResponse['category'] ?? '';
+
+      // Fetch contests
+      final response = await supabase.from('contests').select('*');
       setState(() {
         contests = List<Map<String, dynamic>>.from(response);
         isLoading = false;
-        separateContestsByStatus();  // Separate contests into upcoming and completed
+        separateContestsByStatus(); // Separate contests into upcoming and completed
       });
     } catch (e) {
       print('Error fetching contests: $e');
@@ -61,7 +82,7 @@ class _ContestPageState extends State<ContestPage> {
     }
   }
 
-  // Separate contests into upcoming and completed
+  // Separate contests into upcoming and completed based on contest's category
   void separateContestsByStatus() {
     upcomingContests = [];
     completedContests = [];
@@ -75,61 +96,68 @@ class _ContestPageState extends State<ContestPage> {
       try {
         contestEndTime = DateTime.parse('$date $endTime');
       } catch (e) {
-        contestEndTime = DateTime.now();  // Default to current time if parsing fails
+        contestEndTime = DateTime.now(); // Default to current time if parsing fails
       }
 
       final isCompleted = DateTime.now().isAfter(contestEndTime);
       final contestStartTime = DateTime.parse('$date $time');
       final isRunning = DateTime.now().isAfter(contestStartTime);
 
-      if (isCompleted) {
-        completedContests.add(contest);  // Add to completed contests
-      } else {
-        upcomingContests.add(contest);  // Add to upcoming contests
+      // Only include contests for the user's category
+      if (contest['category'] == userCategory) {
+        if (isCompleted) {
+          completedContests.add(contest); // Add to completed contests
+        } else {
+          upcomingContests.add(contest); // Add to upcoming contests
+        }
       }
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: DefaultTabController(
-        length: 2, // Two tabs: Upcoming and Completed
-        child: Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(top: 10.0),
-              child: TabBar(
-                tabs: [
-                  Tab(
-                    text: 'Upcoming',
-                  ),
-                  Tab(
-                    text: 'Completed',
-                  ),
-                ],
-              ),
+  @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    body: DefaultTabController(
+      length: 2, // Two tabs: Upcoming and Completed
+      child: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 10.0),
+            child: TabBar(
+              tabs: [
+                Tab(
+                  text: 'Upcoming',
+                ),
+                Tab(
+                  text: 'Completed',
+                ),
+              ],
             ),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  // Upcoming Contests Tab
-                  UpcomingContestsTab(
-                    isLoading: isLoading,
-                    contests: upcomingContests,  // Pass upcoming contests here
+          ),
+          Expanded(
+            child: isLoading 
+                ? Center(child: CircularProgressIndicator()) // Show loader here
+                : TabBarView(
+                    children: [
+                      // Upcoming Contests Tab
+                      UpcomingContestsTab(
+                        isLoading: isLoading,
+                        contests: upcomingContests, // Pass upcoming contests here
+                      ),
+                      // Completed Contests Tab
+                      CompletedContestsTab(
+                        contests: completedContests, // Pass completed contests here
+                      ),
+                    ],
                   ),
-                  // Completed Contests Tab
-                  CompletedContestsTab(
-                    contests: completedContests,  // Pass completed contests here
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 }
 
 class UpcomingContestsTab extends StatelessWidget {
@@ -172,7 +200,7 @@ class UpcomingContestsTab extends StatelessWidget {
         try {
           contestEndTime = DateTime.parse('$date $endTime');
         } catch (e) {
-          contestEndTime = DateTime.now();  // Default to current time if parsing fails
+          contestEndTime = DateTime.now(); // Default to current time if parsing fails
         }
 
         // Real-time checking for contest status
@@ -265,7 +293,7 @@ class CompletedContestsTab extends StatelessWidget {
         try {
           contestEndTime = DateTime.parse('$date $endTime');
         } catch (e) {
-          contestEndTime = DateTime.now();  // Default to current time if parsing fails
+          contestEndTime = DateTime.now(); // Default to current time if parsing fails
         }
 
         // Real-time checking for contest status

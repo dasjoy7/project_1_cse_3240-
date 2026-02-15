@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:async'; // Import Timer
-import 'full_question_page.dart'; // Import the full question page
+import 'dart:async';
+import 'full_question_page.dart';
 
 class ContestQuestionsPage extends StatefulWidget {
   final String contestId;
   final String contestTitle;
   final String contestSubtitle;
-  final DateTime contestStartTime; // Contest start time
-  final DateTime contestEndTime; // Contest end time
+  final DateTime contestStartTime;
+  final DateTime contestEndTime;
 
   const ContestQuestionsPage({
     Key? key,
@@ -24,40 +24,47 @@ class ContestQuestionsPage extends StatefulWidget {
 }
 
 class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
-  List<Map<String, dynamic>> questions = []; // Store the questions
-  late Timer _timer; // Timer to update countdown
-  late Duration _remainingTime; // Remaining time until contest end
-  bool _isContestStarted = false; // Flag to track if contest has started
-  bool _isContestCompleted = false; // Flag to track if contest has completed
+
+  List<Map<String, dynamic>> questions = [];
+  Map<String, bool?> answerStatus = {}; // Store the correctness of each answer
+
+  late Timer _timer;
+  late Duration _remainingTime;
+
+  bool _isContestStarted = false;
+  bool _isContestCompleted = false;
 
   @override
   void initState() {
     super.initState();
     _loadQuestions();
-    _startCountdown(); // Start the countdown timer when the page is initialized
+    _startCountdown();
   }
 
-  // Load questions for the contest from Supabase
+  // Load questions from Supabase
   Future<void> _loadQuestions() async {
     try {
       final response = await Supabase.instance.client
           .from('questions')
           .select('*')
-          .eq('contest_id', widget.contestId); // Fetch questions by contest ID
+          .eq('contest_id', widget.contestId);
 
       setState(() {
         questions = List<Map<String, dynamic>>.from(response);
+        for (var question in questions) {
+          answerStatus[question['id'].toString()] =
+              null; // Default status for all answers
+        }
       });
     } catch (e) {
       print('Error loading questions: $e');
     }
   }
 
-  // Start the countdown timer
+  // Start countdown timer
   void _startCountdown() {
     _remainingTime = widget.contestStartTime.difference(DateTime.now());
 
-    // If contest has already started, set _remainingTime to 0
     if (_remainingTime.isNegative) {
       setState(() {
         _remainingTime = Duration(seconds: 0);
@@ -71,42 +78,36 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
         _updateRemainingTime();
       });
 
-      // If time is up, cancel the timer
       if (_remainingTime.inSeconds <= 0) {
         _timer.cancel();
         setState(() {
-          _isContestCompleted = true; // Contest has completed
+          _isContestCompleted = true;
         });
       }
     });
   }
 
-  // Update the remaining time
   void _updateRemainingTime() {
     DateTime now = DateTime.now();
-
-    // Check if contest has started
     if (now.isAfter(widget.contestStartTime) && !_isContestStarted) {
       _isContestStarted = true;
     }
 
-    // Calculate remaining time until contest end
     _remainingTime = widget.contestEndTime.difference(now);
 
-    // Ensure remaining time doesn't go negative
     if (_remainingTime.isNegative) {
       _remainingTime = Duration(seconds: 0);
-      _isContestCompleted = true; // Contest has completed
+      _isContestCompleted = true;
     }
   }
 
   @override
   void dispose() {
-    _timer.cancel(); // Cancel the timer when the widget is disposed
+    _timer.cancel();
     super.dispose();
   }
 
-  // Format the remaining time as hours, minutes, and seconds
+  // Format remaining time
   String _formatTime(Duration duration) {
     int hours = duration.inHours;
     int minutes = duration.inMinutes % 60;
@@ -117,29 +118,25 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.contestTitle),
-      ),
+      appBar: AppBar(title: Text(widget.contestTitle)),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Contest title and subtitle
-            Text(
-              widget.contestSubtitle,
-              style: TextStyle(fontSize: 18),
-            ),
+            Text(widget.contestSubtitle, style: TextStyle(fontSize: 18)),
             SizedBox(height: 20),
-
-            // Timer section - Countdown of remaining time
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: _remainingTime.inMinutes < 5 ? Colors.red.shade50 : Colors.blue.shade50,
+                color: _remainingTime.inMinutes < 5
+                    ? Colors.red.shade50
+                    : Colors.blue.shade50,
                 border: Border.all(
-                  color: _remainingTime.inMinutes < 5 ? Colors.red : Colors.blue,
+                  color: _remainingTime.inMinutes < 5
+                      ? Colors.red
+                      : Colors.blue,
                   width: 2,
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -157,53 +154,63 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
                     style: TextStyle(
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
-                      color: _remainingTime.inMinutes < 5 ? Colors.red : Colors.blue,
+                      color: _remainingTime.inMinutes < 5
+                          ? Colors.red
+                          : Colors.blue,
                       fontFamily: 'monospace',
                     ),
                   ),
                 ],
               ),
             ),
-
             SizedBox(height: 20),
-
-            // Display list of questions
             Text(
               'Questions: ',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 10),
-
-            // Display list of questions
             Expanded(
               child: ListView.builder(
                 itemCount: questions.length,
                 itemBuilder: (context, index) {
                   final question = questions[index];
-                  final questionName = question['name'] ?? 'No Name'; // Safe fallback
-                  final questionText = question['question_text'] ?? 'No Text'; // Safe fallback
+                  final questionName = question['name'] ?? 'No Name';
+                  final questionText = question['question_text'] ?? 'No Text';
+                  final questionId = question['id'].toString();
 
                   return Card(
                     margin: EdgeInsets.symmetric(vertical: 10),
                     child: ListTile(
-                      title: Text('${question['serial_number']}. $questionName'),
+                      title: Text(
+                        '${question['serial_number']}. $questionName',
+                      ),
                       subtitle: Text(questionText),
-                      onTap: () {
-                        if (!_isContestCompleted) {
-                          // Navigate to the full question page if contest is started and not completed
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => FullQuestionPage(
-                                questionId: question['id'].toString(),
-                              ),
+                      trailing: answerStatus[questionId] == true
+                          ? Icon(
+                              Icons.check_circle,
+                              color: Colors.green,
+                            ) // Green check for correct
+                          : answerStatus[questionId] == false
+                          ? Icon(
+                              Icons.cancel,
+                              color: Colors.red,
+                            ) // Red cross for incorrect
+                          : null, // No icon if unanswered
+                      onTap: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FullQuestionPage(
+                              questionId: questionId,
+                              isContestCompleted: () => _isContestCompleted,
                             ),
-                          );
-                        } else {
-                          // If the contest has completed, show a message
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Contest has been completed, submission is closed.")),
-                          );
+                          ),
+                        );
+
+                        if (result != null) {
+                          setState(() {
+                            answerStatus[questionId] = result;
+                          });
                         }
                       },
                     ),
