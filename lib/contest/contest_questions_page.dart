@@ -32,6 +32,9 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
 
   bool _isContestStarted = false;
   bool _isContestCompleted = false;
+  bool _hasUpdatedProfileRatings = false; // ← Add this flag
+
+  List<VoidCallback> _onContestEndCallbacks = [];
 
   @override
   void initState() {
@@ -54,7 +57,7 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
         }
       });
 
-      await _loadAnswerStatus(); // ✅ Load saved marks after questions are ready
+      await _loadAnswerStatus();
     } catch (e) {
       print('Error loading questions: $e');
     }
@@ -114,6 +117,13 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
         setState(() {
           _isContestCompleted = true;
         });
+        _notifyContestEnd();
+
+        // Only update profile ratings once
+        if (!_hasUpdatedProfileRatings) {
+          _hasUpdatedProfileRatings = true;
+          _updateProfileRatings();
+        }
       }
     });
   }
@@ -129,6 +139,58 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
     if (_remainingTime.isNegative) {
       _remainingTime = Duration(seconds: 0);
       _isContestCompleted = true;
+    }
+  }
+
+  void _notifyContestEnd() {
+    for (var cb in _onContestEndCallbacks) {
+      cb();
+    }
+    _onContestEndCallbacks.clear();
+  }
+
+  Future<void> _updateProfileRatings() async {
+    print('=== Starting profile rating update ===');
+    try {
+      // Get all submissions for this contest
+      final submissions = await Supabase.instance.client
+          .from('contest_question_submission')
+          .select('user_id, rating')
+          .eq('contest_id', widget.contestId);
+
+      print('Found ${submissions.length} submissions to update');
+
+      // Update each user's profile rating
+      for (var submission in submissions) {
+        final userId = submission['user_id'];
+        final contestRating = (submission['rating'] as num?)?.toInt() ?? 0;
+
+        print('Processing user $userId with contest rating: $contestRating');
+
+        // Get current profile rating
+        final profile = await Supabase.instance.client
+            .from('profile')
+            .select('rating')
+            .eq('id', userId)
+            .single();
+
+        int currentRating = (profile['rating'] as num?)?.toInt() ?? 0;
+        int newRating = currentRating + contestRating;
+
+        print('User $userId: Current=$currentRating, Contest=$contestRating, New=$newRating');
+
+        // Update profile
+        await Supabase.instance.client
+            .from('profile')
+            .update({'rating': newRating})
+            .eq('id', userId);
+
+        print('Updated user $userId profile rating to $newRating');
+      }
+
+      print('=== All profile ratings updated successfully ===');
+    } catch (e) {
+      print('Error updating profile ratings: $e');
     }
   }
 
@@ -177,7 +239,7 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
                   Text(
                     _isContestStarted ? 'Time Remaining' : 'Starts In',
                     style:
-                        TextStyle(fontSize: 16, color: Colors.grey.shade700),
+                    TextStyle(fontSize: 16, color: Colors.grey.shade700),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -222,11 +284,11 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
                       subtitle: Text(questionText),
                       trailing: status == true
                           ? const Icon(Icons.check_circle,
-                              color: Colors.green, size: 28)
+                          color: Colors.green, size: 28)
                           : status == false
-                              ? const Icon(Icons.cancel,
-                                  color: Colors.red, size: 28)
-                              : null,
+                          ? const Icon(Icons.cancel,
+                          color: Colors.red, size: 28)
+                          : null,
                       onTap: () async {
                         final result = await Navigator.push(
                           context,
@@ -235,6 +297,7 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
                               questionId: questionId,
                               isContestCompleted: () => _isContestCompleted,
                               contestId: widget.contestId,
+                              onContestEnd: _onContestEndCallbacks.add,
                             ),
                           ),
                         );

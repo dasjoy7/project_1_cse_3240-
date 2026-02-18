@@ -5,12 +5,14 @@ class FullQuestionPage extends StatefulWidget {
   final String questionId;
   final bool Function() isContestCompleted;
   final String contestId;
+  final void Function(VoidCallback) onContestEnd;
 
   const FullQuestionPage({
     Key? key,
     required this.questionId,
     required this.isContestCompleted,
     required this.contestId,
+    required this.onContestEnd,
   }) : super(key: key);
 
   @override
@@ -29,6 +31,12 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
   void initState() {
     super.initState();
     _loadQuestion();
+    widget.onContestEnd(() {
+      if (mounted) {
+        setState(() {});
+        _showContestEndedDialog();
+      }
+    });
   }
 
   Future<void> _loadQuestion() async {
@@ -47,6 +55,26 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
     } catch (e) {
       print('Error fetching question: $e');
     }
+  }
+
+  void _showContestEndedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Contest Ended'),
+        content: const Text('Time is up! Submissions are now closed.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // close dialog
+              Navigator.pop(context); // go back to contest page
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _submitAnswer() async {
@@ -93,13 +121,44 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
       final userId = currentUser.id;
 
       try {
+        // First, get current attempts
+        final existing = await Supabase.instance.client
+            .from('contest_question_submission')
+            .select('serial_${_serialNumber}_attempts')
+            .eq('user_id', userId)
+            .eq('contest_id', widget.contestId)
+            .maybeSingle();
+
+        int currentAttempts = 0;
+        if (existing != null &&
+            existing['serial_${_serialNumber}_attempts'] != null) {
+          currentAttempts = existing['serial_${_serialNumber}_attempts'];
+        }
+
+        // Increment attempts
+        int newAttempts = currentAttempts + 1;
+
+        // Prepare update data
+        Map<String, dynamic> updateData = {
+          'serial_${_serialNumber}_attempts': newAttempts,
+        };
+
+        // Only update status if correct
+        if (isCorrect) {
+          updateData['serial_$_serialNumber'] = 1;
+        } else {
+          // Mark as attempted but wrong (0)
+          updateData['serial_$_serialNumber'] = 0;
+        }
+
         await Supabase.instance.client
             .from('contest_question_submission')
-            .update({
-              'serial_$_serialNumber': isCorrect ? 1 : 0,
-            })
+            .update(updateData)
             .eq('user_id', userId)
             .eq('contest_id', widget.contestId);
+
+        // Recalculate total rating (for both correct and wrong answers)
+        await _updateRating(userId);
       } catch (e) {
         print('Error updating submission: $e');
       }
@@ -147,6 +206,60 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
     );
   }
 
+  Future<void> _updateRating(String userId) async {
+    try {
+      // Get user's submission data
+      final submission = await Supabase.instance.client
+          .from('contest_question_submission')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('contest_id', widget.contestId)
+          .single();
+
+      int totalRating = 0;
+
+      // Calculate rating for each question (serial 1-8)
+      for (int i = 1; i <= 8; i++) {
+        int? status = submission['serial_$i'];
+        int? attempts = submission['serial_${i}_attempts'];
+
+        // If question was attempted
+        if (attempts != null && attempts > 0) {
+          if (status == 1) {
+            // Correct answer
+            // Base points = serial number × 10 (Q1=10, Q2=20, Q3=30...)
+            int basePoints = i * 10;
+
+            // Penalty for wrong attempts (deduct 2 points per wrong attempt)
+            int wrongAttempts = attempts - 1; // -1 because final attempt was correct
+            int penalty = wrongAttempts * 2;
+
+            // Final score for this question (minimum 1 point)
+            int questionScore = basePoints - penalty;
+            if (questionScore < 1) questionScore = 1;
+
+            totalRating += questionScore;
+          } else if (status == 0) {
+            // Wrong answer - negative marking (-2 points per wrong attempt)
+            int negativeMarks = attempts * 2;
+            totalRating -= negativeMarks;
+          }
+        }
+      }
+
+      // Update rating in contest_question_submission table
+      await Supabase.instance.client
+          .from('contest_question_submission')
+          .update({'rating': totalRating})
+          .eq('user_id', userId)
+          .eq('contest_id', widget.contestId);
+
+      print('Contest rating updated: $totalRating');
+    } catch (e) {
+      print('Error updating rating: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -183,8 +296,9 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color:
-                      _answerStatus == 'Correct!' ? Colors.green : Colors.red,
+                  color: _answerStatus == 'Correct!'
+                      ? Colors.green
+                      : Colors.red,
                 ),
               ),
           ],

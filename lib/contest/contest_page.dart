@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
 import 'contest_card.dart';
 import 'contest_questions_page.dart';
+import 'contest_leaderboard_page.dart';
 
 class ContestPage extends StatefulWidget {
   const ContestPage({super.key});
@@ -60,7 +61,7 @@ class _ContestPageState extends State<ContestPage> {
           .eq('id', currentUser.id)
           .single();
 
-      userCategory = userResponse['category'] ?? ''; //null-aware operator
+      userCategory = userResponse['category'] ?? '';
 
       // Fetch contests
       final response = await supabase.from('contests').select('*');
@@ -121,14 +122,12 @@ class _ContestPageState extends State<ContestPage> {
     try {
       final userId = currentUser.id;
 
-      // Check if the user is already registered for the contest
-      // maybeSingle() returns null if no row found, single() throws if no row found
       final existing = await supabase
           .from('contest_question_submission')
           .select('*')
           .eq('user_id', userId)
           .eq('contest_id', contestId)
-          .maybeSingle(); // ✅ returns null if not found, instead of throwing
+          .maybeSingle();
 
       if (existing != null) {
         print('User already registered for contest $contestId');
@@ -147,6 +146,14 @@ class _ContestPageState extends State<ContestPage> {
         'serial_6': null,
         'serial_7': null,
         'serial_8': null,
+        'serial_1_attempts': 0,
+        'serial_2_attempts': 0,
+        'serial_3_attempts': 0,
+        'serial_4_attempts': 0,
+        'serial_5_attempts': 0,
+        'serial_6_attempts': 0,
+        'serial_7_attempts': 0,
+        'serial_8_attempts': 0,
         'rating': 0,
       });
 
@@ -176,18 +183,18 @@ class _ContestPageState extends State<ContestPage> {
               child: isLoading
                   ? Center(child: CircularProgressIndicator())
                   : TabBarView(
-                      children: [
-                        UpcomingContestsTab(
-                          isLoading: isLoading,
-                          contests: upcomingContests,
-                          registerUser: _registerUserForContest,
-                        ),
-                        CompletedContestsTab(
-                          contests: completedContests,
-                          registerUser: _registerUserForContest,
-                        ),
-                      ],
-                    ),
+                children: [
+                  UpcomingContestsTab(
+                    isLoading: isLoading,
+                    contests: upcomingContests,
+                    registerUser: _registerUserForContest,
+                  ),
+                  CompletedContestsTab(
+                    contests: completedContests,
+                    registerUser: _registerUserForContest,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -239,19 +246,15 @@ class UpcomingContestsTab extends StatelessWidget {
         try {
           contestEndTime = DateTime.parse('$date $endTime');
         } catch (e) {
-          contestEndTime =
-              DateTime.now(); // Default to current time if parsing fails
+          contestEndTime = DateTime.now();
         }
 
-        // Real-time checking for contest status
         final isCompleted = DateTime.now().isAfter(contestEndTime);
-
         final contestStartTime = DateTime.parse('$date $time');
         final isRunning = DateTime.now().isAfter(contestStartTime);
 
         return GestureDetector(
           onTap: () async {
-            // Register the user for the contest when they click on it
             await registerUser(contestId);
 
             if (isCompleted) {
@@ -294,7 +297,7 @@ class UpcomingContestsTab extends StatelessWidget {
             category: contest['category'] ?? 'No Category',
             duration: contest['duration'] ?? 'No Duration',
             isRunning: isRunning,
-            isCompleted: isCompleted, // Pass isCompleted flag here
+            isCompleted: isCompleted,
           ),
         );
       },
@@ -336,7 +339,6 @@ class CompletedContestsTab extends StatelessWidget {
         final contestCategory = contest['category'] ?? 'No Category';
         final contestDuration = contest['duration'] ?? 'No Duration';
 
-        // Parse the start and end time
         DateTime contestStartTime;
         DateTime contestEndTimeParsed;
         try {
@@ -344,16 +346,14 @@ class CompletedContestsTab extends StatelessWidget {
           contestEndTimeParsed = DateTime.parse('$contestDate $contestEndTime');
         } catch (e) {
           contestStartTime = DateTime.now();
-          contestEndTimeParsed = DateTime.now(); // Default to current time if parsing fails
+          contestEndTimeParsed = DateTime.now();
         }
 
-        // Determine if the contest is completed or running
         final isCompleted = DateTime.now().isAfter(contestEndTimeParsed);
         final isRunning = DateTime.now().isAfter(contestStartTime);
 
         return GestureDetector(
           onTap: () async {
-            // Register the user for the contest when they click on it
             await registerUser(contestId);
 
             Navigator.push(
@@ -376,12 +376,22 @@ class CompletedContestsTab extends StatelessWidget {
             time: contestTime,
             category: contestCategory,
             duration: contestDuration,
-            isRunning: isRunning, // Pass isRunning flag here
-            isCompleted: isCompleted, // Pass isCompleted flag here
+            isRunning: isRunning,
+            isCompleted: isCompleted,
+            onAnalysisTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ContestLeaderboardPage(
+                    contestId: contestId,
+                    contestTitle: contestTitle,
+                  ),
+                ),
+              );
+            },
           ),
         );
       },
     );
   }
 }
-

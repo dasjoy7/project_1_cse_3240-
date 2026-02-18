@@ -37,13 +37,75 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   final Map<String, List<String>> _locations = {
-    'Barishal': ['Barguna', 'Barishal', 'Bhola', 'Jhalokati', 'Patuakhali', 'Pirojpur'],
-    'Chattogram': ['Bandarban', 'Brahmanbaria', 'Chandpur', 'Chattogram', 'Cumilla', "Cox's Bazar", 'Feni', 'Khagrachari', 'Lakshmipur', 'Noakhali', 'Rangamati'],
-    'Dhaka': ['Dhaka', 'Faridpur', 'Gazipur', 'Gopalganj', 'Kishoreganj', 'Madaripur', 'Manikganj', 'Munshiganj', 'Narayanganj', 'Narsingdi', 'Rajbari', 'Shariatpur', 'Tangail'],
-    'Khulna': ['Bagerhat', 'Chuadanga', 'Jashore', 'Jhenaidah', 'Khulna', 'Kushtia', 'Magura', 'Meherpur', 'Narail', 'Satkhira'],
+    'Barishal': [
+      'Barguna',
+      'Barishal',
+      'Bhola',
+      'Jhalokati',
+      'Patuakhali',
+      'Pirojpur',
+    ],
+    'Chattogram': [
+      'Bandarban',
+      'Brahmanbaria',
+      'Chandpur',
+      'Chattogram',
+      'Cumilla',
+      "Cox's Bazar",
+      'Feni',
+      'Khagrachari',
+      'Lakshmipur',
+      'Noakhali',
+      'Rangamati',
+    ],
+    'Dhaka': [
+      'Dhaka',
+      'Faridpur',
+      'Gazipur',
+      'Gopalganj',
+      'Kishoreganj',
+      'Madaripur',
+      'Manikganj',
+      'Munshiganj',
+      'Narayanganj',
+      'Narsingdi',
+      'Rajbari',
+      'Shariatpur',
+      'Tangail',
+    ],
+    'Khulna': [
+      'Bagerhat',
+      'Chuadanga',
+      'Jashore',
+      'Jhenaidah',
+      'Khulna',
+      'Kushtia',
+      'Magura',
+      'Meherpur',
+      'Narail',
+      'Satkhira',
+    ],
     'Mymensingh': ['Jamalpur', 'Mymensingh', 'Netrokona', 'Sherpur'],
-    'Rajshahi': ['Bogura', 'Joypurhat', 'Naogaon', 'Natore', 'Chapainawabganj', 'Pabna', 'Rajshahi', 'Sirajganj'],
-    'Rangpur': ['Dinajpur', 'Gaibandha', 'Kurigram', 'Lalmonirhat', 'Nilphamari', 'Panchagarh', 'Rangpur', 'Thakurgaon'],
+    'Rajshahi': [
+      'Bogura',
+      'Joypurhat',
+      'Naogaon',
+      'Natore',
+      'Chapainawabganj',
+      'Pabna',
+      'Rajshahi',
+      'Sirajganj',
+    ],
+    'Rangpur': [
+      'Dinajpur',
+      'Gaibandha',
+      'Kurigram',
+      'Lalmonirhat',
+      'Nilphamari',
+      'Panchagarh',
+      'Rangpur',
+      'Thakurgaon',
+    ],
     'Sylhet': ['Habiganj', 'Moulvibazar', 'Sunamganj', 'Sylhet'],
   };
 
@@ -58,58 +120,52 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Future<void> _handleSignUp() async {
-    if (!_formKey.currentState!.validate()) return;
+  if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedDivision == null || _selectedDistrict == null) {
-      CommonUI.showSnackBar(context, "Please select Division and District", isError: true);
-      return;
-    }
+  if (_selectedDivision == null || _selectedDistrict == null) {
+    CommonUI.showSnackBar(context, "Please select Division and District", isError: true);
+    return;
+  }
 
-    setState(() => _isLoading = true);
+  setState(() => _isLoading = true);
 
-    final supabase = Supabase.instance.client;
-
-    try {
-      // 1. Auth Sign Up
-      final AuthResponse res = await supabase.auth.signUp(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-
-      final user = res.user;
-      if (user == null) throw Exception("User creation failed.");
-
-      // 2. Insert Profile (Storing ALL Information)
-      await supabase.from('profiles').insert({
-        'id': user.id, // Links to auth.users UUID
+  try {
+    final AuthResponse res = await Supabase.instance.client.auth.signUp(
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+      data: {
         'full_name': _nameController.text.trim(),
-        'username': _usernameController.text.trim(),
-        'email': _emailController.text.trim(),
+        'username': _usernameController.text.trim().toLowerCase(),
         'student_class': _selectedClass,
         'category': _getCategoryFromClass(_selectedClass),
         'division': _selectedDivision,
         'district': _selectedDistrict,
         'institution': _institutionController.text.trim(),
-      });
+      },
+    );
 
-      if (!mounted) return; //Every StatefulWidget has a boolean property called mounted.
+    if (res.user == null) throw Exception("User creation failed.");
 
-      CommonUI.showSnackBar(context, "Success! Check your email to verify account.");
+    // NO manual profile insert — trigger handles it
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-      );
-    } on PostgrestException catch (e) { //Handles errors from Supabase database operations (like inserting into profiles table).
-      if (mounted) CommonUI.showSnackBar(context, "Database Error: ${e.message}", isError: true);
-    } on AuthException catch (e) {
-      if (mounted) CommonUI.showSnackBar(context, e.message, isError: true);
-    } catch (e) {
-      if (mounted) CommonUI.showSnackBar(context, "Unexpected Error: $e", isError: true);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    if (!mounted) return;
+
+    CommonUI.showSnackBar(context, "Success! Check your email to verify account.");
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+  } on AuthException catch (e) {
+    if (mounted) CommonUI.showSnackBar(context, e.message, isError: true);
+  } on PostgrestException catch (e) {
+    if (mounted) CommonUI.showSnackBar(context, "Database Error: ${e.message}", isError: true);
+  } catch (e) {
+    if (mounted) CommonUI.showSnackBar(context, "Unexpected Error: $e", isError: true);
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -127,41 +183,61 @@ class _SignUpPageState extends State<SignUpPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Join the Math Arena", 
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              const Text(
+                "Join the Math Arena",
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
-              const Text("Create your account and start solving problems",
-                style: TextStyle(color: Colors.grey, fontSize: 14)),
-              
+              const Text(
+                "Create your account and start solving problems",
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+              ),
+
               const SizedBox(height: 20),
 
               CommonUI.buildLabel("Full Name"),
               TextFormField(
                 controller: _nameController,
-                validator: (v)=>v!.isEmpty? "Full name is required": null, //v! bang operator (null safety)
-                decoration: CommonUI.modernInputStyle(hintText: "Enter your full name", prefixIcon: Icons.person_outline),
+                validator: (v) => v!.isEmpty
+                    ? "Full name is required"
+                    : null, //v! bang operator (null safety)
+                decoration: CommonUI.modernInputStyle(
+                  hintText: "Enter your full name",
+                  prefixIcon: Icons.person_outline,
+                ),
               ),
 
               CommonUI.buildLabel("Username"),
               TextFormField(
                 controller: _usernameController,
-                validator: (v) => v!.length < 3 ? "Username must be 3+ chars" : null,
-                decoration: CommonUI.modernInputStyle(hintText: "@username", prefixIcon: Icons.alternate_email),
+                validator: (v) =>
+                    v!.length < 3 ? "Username must be 3+ chars" : null,
+                decoration: CommonUI.modernInputStyle(
+                  hintText: "@username",
+                  prefixIcon: Icons.alternate_email,
+                ),
               ),
 
               CommonUI.buildLabel("Email"),
               TextFormField(
                 controller: _emailController,
-                validator: (v) => !v!.contains('@') ? "Enter a valid email" : null,
+                validator: (v) =>
+                    !v!.contains('@') ? "Enter a valid email" : null,
                 keyboardType: TextInputType.emailAddress,
-                decoration: CommonUI.modernInputStyle(hintText: "your.email@example.com", prefixIcon: Icons.email_outlined),
+                decoration: CommonUI.modernInputStyle(
+                  hintText: "your.email@example.com",
+                  prefixIcon: Icons.email_outlined,
+                ),
               ),
 
               CommonUI.buildLabel("Institution"),
               TextFormField(
                 controller: _institutionController,
                 validator: (v) => v!.isEmpty ? "Institution is required" : null,
-                decoration: CommonUI.modernInputStyle(hintText: "School/College name", prefixIcon: Icons.school_outlined),
+                decoration: CommonUI.modernInputStyle(
+                  hintText: "School/College name",
+                  prefixIcon: Icons.school_outlined,
+                ),
               ),
 
               CommonUI.buildLabel("Select Class"),
@@ -180,12 +256,18 @@ class _SignUpPageState extends State<SignUpPage> {
                         width: 50,
                         margin: const EdgeInsets.only(right: 10),
                         decoration: BoxDecoration(
-                          color: selected ? const Color(0xFF1E88E5) : const Color(0xFFF3F4F6),
+                          color: selected
+                              ? const Color(0xFF1E88E5)
+                              : const Color(0xFFF3F4F6),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Center(
-                          child: Text("$classNum",
-                            style: TextStyle(color: selected ? Colors.white : Colors.black87, fontWeight: FontWeight.bold),
+                          child: Text(
+                            "$classNum",
+                            style: TextStyle(
+                              color: selected ? Colors.white : Colors.black87,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -195,8 +277,14 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               Padding(
                 padding: const EdgeInsets.only(top: 8, left: 4),
-                child: Text("Category: ${_getCategoryFromClass(_selectedClass)}",
-                  style: const TextStyle(color: Colors.blueGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                child: Text(
+                  "Category: ${_getCategoryFromClass(_selectedClass)}",
+                  style: const TextStyle(
+                    color: Colors.blueGrey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
 
               const SizedBox(height: 10),
@@ -211,8 +299,17 @@ class _SignUpPageState extends State<SignUpPage> {
                         DropdownButtonFormField<String>(
                           decoration: CommonUI.modernInputStyle(),
                           value: _selectedDivision,
-                          items: _locations.keys.map((d) => DropdownMenuItem(value: d, 
-                            child: Text(d, style: const TextStyle(fontSize: 12)))).toList(),
+                          items: _locations.keys
+                              .map(
+                                (d) => DropdownMenuItem(
+                                  value: d,
+                                  child: Text(
+                                    d,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                              )
+                              .toList(),
                           onChanged: (v) => setState(() {
                             _selectedDivision = v;
                             _selectedDistrict = null;
@@ -230,9 +327,21 @@ class _SignUpPageState extends State<SignUpPage> {
                         DropdownButtonFormField<String>(
                           decoration: CommonUI.modernInputStyle(),
                           value: _selectedDistrict,
-                          items: (_selectedDivision == null) ? [] : _locations[_selectedDivision]!.map((d) => 
-                            DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 12)))).toList(),
-                          onChanged: (v) => setState(() => _selectedDistrict = v),
+                          items: (_selectedDivision == null)
+                              ? []
+                              : _locations[_selectedDivision]!
+                                    .map(
+                                      (d) => DropdownMenuItem(
+                                        value: d,
+                                        child: Text(
+                                          d,
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                          onChanged: (v) =>
+                              setState(() => _selectedDistrict = v),
                         ),
                       ],
                     ),
@@ -244,13 +353,20 @@ class _SignUpPageState extends State<SignUpPage> {
               TextFormField(
                 controller: _passwordController,
                 obscureText: !_isPasswordVisible,
-                validator: (v) => v!.length < 6 ? "Password must be 6+ chars" : null,
+                validator: (v) =>
+                    v!.length < 6 ? "Password must be 6+ chars" : null,
                 decoration: CommonUI.modernInputStyle(
                   hintText: "Create a strong password",
                   prefixIcon: Icons.lock_outline,
                   suffixIcon: IconButton(
-                    icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed: () => setState(
+                      () => _isPasswordVisible = !_isPasswordVisible,
+                    ),
                   ),
                 ),
               ),
@@ -264,11 +380,20 @@ class _SignUpPageState extends State<SignUpPage> {
                   onPressed: _isLoading ? null : _handleSignUp,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1E88E5),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Sign Up", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                      : const Text(
+                          "Sign Up",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 40),
