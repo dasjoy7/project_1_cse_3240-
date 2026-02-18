@@ -208,6 +208,14 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
 
   Future<void> _updateRating(String userId) async {
     try {
+      // First, get the actual number of questions for this contest
+      final questionsResponse = await Supabase.instance.client
+          .from('questions')
+          .select('serial_number')
+          .eq('contest_id', widget.contestId);
+
+      int totalQuestions = questionsResponse.length;
+
       // Get user's submission data
       final submission = await Supabase.instance.client
           .from('contest_question_submission')
@@ -218,8 +226,8 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
 
       int totalRating = 0;
 
-      // Calculate rating for each question (serial 1-8)
-      for (int i = 1; i <= 8; i++) {
+      // Calculate rating for each question (up to total questions in contest)
+      for (int i = 1; i <= totalQuestions; i++) {
         int? status = submission['serial_$i'];
         int? attempts = submission['serial_${i}_attempts'];
 
@@ -254,7 +262,7 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
           .eq('user_id', userId)
           .eq('contest_id', widget.contestId);
 
-      print('Contest rating updated: $totalRating');
+      print('Contest rating updated: $totalRating (contest has $totalQuestions questions)');
     } catch (e) {
       print('Error updating rating: $e');
     }

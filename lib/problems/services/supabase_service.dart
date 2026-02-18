@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:project_1_cse_3240/problems_and_profile/problems/model/problem.dart';
+import 'package:project_1_cse_3240/problems/model/problem.dart';
+
 class SupabaseService {
   final SupabaseClient _client = Supabase.instance.client;
 

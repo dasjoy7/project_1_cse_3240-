@@ -1,4 +1,5 @@
-class Problem {
+class Problem
+{
   final String id;
   final String title;
   final String description;
@@ -8,6 +9,7 @@ class Problem {
   final List<String> tags;
   final int submissionCount;
   final int points;
+  final int? userStatus; //1=correct,0=wrong,null=not attempted
 
   Problem({
     required this.id,
@@ -19,9 +21,10 @@ class Problem {
     required this.tags,
     required this.submissionCount,
     required this.points,
+    this.userStatus,
   });
-
-  factory Problem.fromMap(Map<String, dynamic> map) {
+  factory Problem.fromMap(Map<String,dynamic>map)
+  {
     return Problem(
       id: map['id'],
       title: map['title'],
@@ -29,11 +32,10 @@ class Problem {
       hint: map['hint'] ?? '',
       difficulty: map['difficulty'],
       category: map['main_category'],
-      tags: map['tags'] == null
-          ? []
-          : map['tags'].toString().split(','),
-      submissionCount: map['submission_count'] ?? 0,
+      tags: map['tags']==null?[]: map['tags'].toString().split(','),
+      submissionCount: map['submission_count']??0,
       points: map['points'],
+      userStatus: map['user_status'],
     );
   }
 }

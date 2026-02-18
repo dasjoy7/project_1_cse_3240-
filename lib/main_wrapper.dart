@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:project_1_cse_3240/ai/ask_ai_page.dart';
 import 'package:project_1_cse_3240/contest/contest_page.dart';
 import 'package:project_1_cse_3240/features/auth/pages/login_page.dart';
-import 'package:project_1_cse_3240/problems_and_profile/problems/screens/problem_list_screen.dart';
+import 'package:project_1_cse_3240/problems/screens/problem_list_screen.dart';
+import 'package:project_1_cse_3240/problems/services/problem_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MainWrapper extends StatefulWidget {
@@ -19,7 +21,7 @@ class _MainWrapperState extends State<MainWrapper> {
     const ProblemListPage(),
     const Center(child: Text("Leaderboard")),
     const ContestPage(),
-    const Center(child: Text("Profile")),
+    const ProfilePage(),
   ];
 
   late PageController _pageController;
@@ -82,6 +84,17 @@ class _MainWrapperState extends State<MainWrapper> {
               title: const Text("About Arena"),
               onTap: () => Navigator.pop(context),
             ),
+            ListTile(
+              leading: const Icon(Icons.rocket),
+              title: const Text("Ask AI"),
+              onTap: (){
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AskAIPage()),
+                );
+              },
+            ),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
@@ -127,7 +140,7 @@ class _MainWrapperState extends State<MainWrapper> {
           ],
         ),
       ),
-      
+
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) {
