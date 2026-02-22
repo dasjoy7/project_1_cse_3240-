@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:project_1_cse_3240/ai/ask_ai_page.dart';
+import 'package:project_1_cse_3240/home/home_page.dart';
+import 'package:project_1_cse_3240/profile/screens/profile_page.dart';
+import 'package:project_1_cse_3240/problems/screens/problem_list_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:project_1_cse_3240/home/home_page.dart';
+import 'package:project_1_cse_3240/leaderboard_page.dart';
 import 'package:project_1_cse_3240/contest/contest_page.dart';
 import 'package:project_1_cse_3240/features/auth/pages/login_page.dart';
-import 'package:project_1_cse_3240/problems/screens/problem_list_screen.dart';
-import 'package:project_1_cse_3240/problems/services/problem_service.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'leaderboard_page.dart';
-import 'admin panel/1_admin_panel_page.dart';
-// import 'admin panel/adminpanel_page.dart';
+import 'package:project_1_cse_3240/widgets/app_drawer.dart';
+import 'package:project_1_cse_3240/widgets/user_search_delegate.dart'; 
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -20,153 +22,50 @@ class _MainWrapperState extends State<MainWrapper> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    const Center(child: Text("Home")),
+    const HomePage(),
     const ProblemListPage(),
     const LeaderboardPage(),
     const ContestPage(),
-    // const ProfilePage(),
+    const ProfilePage(),
   ];
-
-  late PageController _pageController;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController(initialPage: 0);
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true,
+      // extendBody: true,
       appBar: AppBar(
-        title: const Text("Math Arena"),
+        title: const Text(
+          "Math Arena",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: const Color(0xFF1E88E5),
         foregroundColor: Colors.white,
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search_rounded),
+            tooltip: 'Search by username',
+            onPressed: () {
+              showSearch(
+                context: context,
+                delegate: UserSearchDelegate(),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Color(0xFF1E88E5)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  CircleAvatar(
-                    backgroundColor: Colors.white,
-                    radius: 30,
-                    child: Icon(
-                      Icons.person,
-                      color: Color(0xFF1E88E5),
-                      size: 35,
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    "Math Athlete",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text("About Arena"),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.rocket),
-              title: const Text("Ask AI"),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AskAIPage()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.admin_panel_settings),
-              title: const Text("Admin Panel"),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AdminPanelPage()),
-                );
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text("Logout", style: TextStyle(color: Colors.red)),
-              onTap: () async {
-                bool confirm =
-                    await showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text("Logout"),
-                        content: const Text("Are you sure you want to exit?"),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text("Cancel"),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text(
-                              "Logout",
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ) ??
-                    false;
-
-                if (confirm) {
-                  // Log the user out from Supabase
-                  await Supabase.instance.client.auth.signOut();
-
-                  if (mounted) {
-                    // After logout, navigate to LoginPage
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LoginPage(),
-                      ),
-                    );
-                  }
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
+      drawer: AppDrawer(
+        onMenuClick: (index) {
           setState(() {
             _selectedIndex = index;
           });
         },
+      ),
+      body: IndexedStack(
+        index: _selectedIndex,
         children: _screens,
       ),
-
       bottomNavigationBar: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
         decoration: BoxDecoration(
@@ -183,12 +82,7 @@ class _MainWrapperState extends State<MainWrapper> {
           borderRadius: BorderRadius.circular(30),
           child: BottomNavigationBar(
             currentIndex: _selectedIndex,
-            onTap: (index) {
-              setState(() {
-                _selectedIndex = index;
-              });
-              _pageController.jumpToPage(index); // Navigate to selected page
-            },
+            onTap: (i) => setState(() => _selectedIndex = i),
             type: BottomNavigationBarType.fixed,
             backgroundColor: Colors.white,
             selectedItemColor: const Color(0xFF1E88E5),
@@ -196,31 +90,11 @@ class _MainWrapperState extends State<MainWrapper> {
             showSelectedLabels: true,
             showUnselectedLabels: false,
             items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home),
-                label: "Home",
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.assignment_outlined),
-                activeIcon: Icon(Icons.assignment),
-                label: "Problems",
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.leaderboard_outlined),
-                activeIcon: Icon(Icons.leaderboard),
-                label: "Rank",
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.emoji_events_outlined),
-                activeIcon: Icon(Icons.emoji_events),
-                label: "Contest",
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline),
-                activeIcon: Icon(Icons.person),
-                label: "Profile",
-              ),
+              BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: "Home"),
+              BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), activeIcon: Icon(Icons.assignment), label: "Problems"),
+              BottomNavigationBarItem(icon: Icon(Icons.leaderboard_outlined), activeIcon: Icon(Icons.leaderboard), label: "Rank"),
+              BottomNavigationBarItem(icon: Icon(Icons.emoji_events_outlined), activeIcon: Icon(Icons.emoji_events), label: "Contest"),
+              BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: "Profile"),
             ],
           ),
         ),
