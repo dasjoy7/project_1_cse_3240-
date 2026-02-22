@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class ChatMessage {
-  final String role; // "user" | "assistant"
+  final String role;
   String content;
 
   ChatMessage({required this.role, required this.content});
@@ -54,7 +54,7 @@ class _AskAIPageState extends State<AskAIPage> {
 
     if (_apiKey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("OPENROUTER_API_KEY set করা নেই (dart-define ব্যবহার করো).")),
+        const SnackBar(content: Text("OPENROUTER_API_KEY set ")),
       );
       return;
     }

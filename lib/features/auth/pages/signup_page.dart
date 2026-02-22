@@ -120,52 +120,52 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Future<void> _handleSignUp() async {
-  if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
-  if (_selectedDivision == null || _selectedDistrict == null) {
-    CommonUI.showSnackBar(context, "Please select Division and District", isError: true);
-    return;
+    if (_selectedDivision == null || _selectedDistrict == null) {
+      CommonUI.showSnackBar(context, "Please select Division and District", isError: true);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final AuthResponse res = await Supabase.instance.client.auth.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+        data: {
+          'full_name': _nameController.text.trim(),
+          'username': _usernameController.text.trim().toLowerCase(),
+          'student_class': _selectedClass,
+          'category': _getCategoryFromClass(_selectedClass),
+          'division': _selectedDivision,
+          'district': _selectedDistrict,
+          'institution': _institutionController.text.trim(),
+        },
+      );
+
+      if (res.user == null) throw Exception("User creation failed.");
+
+      // NO manual profile insert — trigger handles it
+
+      if (!mounted) return;
+
+      CommonUI.showSnackBar(context, "Success! Check your email to verify account.");
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+    } on AuthException catch (e) {
+      if (mounted) CommonUI.showSnackBar(context, e.message, isError: true);
+    } on PostgrestException catch (e) {
+      if (mounted) CommonUI.showSnackBar(context, "Database Error: ${e.message}", isError: true);
+    } catch (e) {
+      if (mounted) CommonUI.showSnackBar(context, "Unexpected Error: $e", isError: true);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
-
-  setState(() => _isLoading = true);
-
-  try {
-    final AuthResponse res = await Supabase.instance.client.auth.signUp(
-      email: _emailController.text.trim(),
-      password: _passwordController.text.trim(),
-      data: {
-        'full_name': _nameController.text.trim(),
-        'username': _usernameController.text.trim().toLowerCase(),
-        'student_class': _selectedClass,
-        'category': _getCategoryFromClass(_selectedClass),
-        'division': _selectedDivision,
-        'district': _selectedDistrict,
-        'institution': _institutionController.text.trim(),
-      },
-    );
-
-    if (res.user == null) throw Exception("User creation failed.");
-
-    // NO manual profile insert — trigger handles it
-
-    if (!mounted) return;
-
-    CommonUI.showSnackBar(context, "Success! Check your email to verify account.");
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-    );
-  } on AuthException catch (e) {
-    if (mounted) CommonUI.showSnackBar(context, e.message, isError: true);
-  } on PostgrestException catch (e) {
-    if (mounted) CommonUI.showSnackBar(context, "Database Error: ${e.message}", isError: true);
-  } catch (e) {
-    if (mounted) CommonUI.showSnackBar(context, "Unexpected Error: $e", isError: true);
-  } finally {
-    if (mounted) setState(() => _isLoading = false);
-  }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +211,7 @@ class _SignUpPageState extends State<SignUpPage> {
               TextFormField(
                 controller: _usernameController,
                 validator: (v) =>
-                    v!.length < 3 ? "Username must be 3+ chars" : null,
+                v!.length < 3 ? "Username must be 3+ chars" : null,
                 decoration: CommonUI.modernInputStyle(
                   hintText: "@username",
                   prefixIcon: Icons.alternate_email,
@@ -222,7 +222,7 @@ class _SignUpPageState extends State<SignUpPage> {
               TextFormField(
                 controller: _emailController,
                 validator: (v) =>
-                    !v!.contains('@') ? "Enter a valid email" : null,
+                !v!.contains('@') ? "Enter a valid email" : null,
                 keyboardType: TextInputType.emailAddress,
                 decoration: CommonUI.modernInputStyle(
                   hintText: "your.email@example.com",
@@ -302,13 +302,13 @@ class _SignUpPageState extends State<SignUpPage> {
                           items: _locations.keys
                               .map(
                                 (d) => DropdownMenuItem(
-                                  value: d,
-                                  child: Text(
-                                    d,
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ),
-                              )
+                              value: d,
+                              child: Text(
+                                d,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          )
                               .toList(),
                           onChanged: (v) => setState(() {
                             _selectedDivision = v;
@@ -330,16 +330,16 @@ class _SignUpPageState extends State<SignUpPage> {
                           items: (_selectedDivision == null)
                               ? []
                               : _locations[_selectedDivision]!
-                                    .map(
-                                      (d) => DropdownMenuItem(
-                                        value: d,
-                                        child: Text(
-                                          d,
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
+                              .map(
+                                (d) => DropdownMenuItem(
+                              value: d,
+                              child: Text(
+                                d,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          )
+                              .toList(),
                           onChanged: (v) =>
                               setState(() => _selectedDistrict = v),
                         ),
@@ -354,7 +354,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 controller: _passwordController,
                 obscureText: !_isPasswordVisible,
                 validator: (v) =>
-                    v!.length < 6 ? "Password must be 6+ chars" : null,
+                v!.length < 6 ? "Password must be 6+ chars" : null,
                 decoration: CommonUI.modernInputStyle(
                   hintText: "Create a strong password",
                   prefixIcon: Icons.lock_outline,
@@ -365,7 +365,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           : Icons.visibility_off,
                     ),
                     onPressed: () => setState(
-                      () => _isPasswordVisible = !_isPasswordVisible,
+                          () => _isPasswordVisible = !_isPasswordVisible,
                     ),
                   ),
                 ),
@@ -387,13 +387,13 @@ class _SignUpPageState extends State<SignUpPage> {
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
-                          "Sign Up",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
+                    "Sign Up",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 40),

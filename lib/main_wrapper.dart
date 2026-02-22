@@ -5,6 +5,9 @@ import 'package:project_1_cse_3240/features/auth/pages/login_page.dart';
 import 'package:project_1_cse_3240/problems/screens/problem_list_screen.dart';
 import 'package:project_1_cse_3240/problems/services/problem_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'leaderboard_page.dart';
+import 'admin panel/1_admin_panel_page.dart';
+// import 'admin panel/adminpanel_page.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -19,9 +22,9 @@ class _MainWrapperState extends State<MainWrapper> {
   final List<Widget> _screens = [
     const Center(child: Text("Home")),
     const ProblemListPage(),
-    const Center(child: Text("Leaderboard")),
+    const LeaderboardPage(),
     const ContestPage(),
-    const ProfilePage(),
+    // const ProfilePage(),
   ];
 
   late PageController _pageController;
@@ -87,11 +90,22 @@ class _MainWrapperState extends State<MainWrapper> {
             ListTile(
               leading: const Icon(Icons.rocket),
               title: const Text("Ask AI"),
-              onTap: (){
+              onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const AskAIPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.admin_panel_settings),
+              title: const Text("Admin Panel"),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminPanelPage()),
                 );
               },
             ),
@@ -124,14 +138,16 @@ class _MainWrapperState extends State<MainWrapper> {
                     false;
 
                 if (confirm) {
+                  // Log the user out from Supabase
                   await Supabase.instance.client.auth.signOut();
+
                   if (mounted) {
-                    Navigator.pushAndRemoveUntil(
+                    // After logout, navigate to LoginPage
+                    Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const LoginPage(),
                       ),
-                      (route) => false,
                     );
                   }
                 }

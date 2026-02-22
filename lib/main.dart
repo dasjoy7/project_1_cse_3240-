@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:project_1_cse_3240/features/splash/splash_screen.dart';
+import 'package:project_1_cse_3240/main_wrapper.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() async{
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
@@ -12,14 +13,35 @@ void main() async{
   runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _isLoggedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSession();
+  }
+
+  // Check if user is logged in
+  Future<void> _checkSession() async {
+    final session = Supabase.instance.client.auth.currentSession;
+    setState(() {
+      _isLoggedIn = session != null; // If session exists, user is logged in
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: SplashScreen(),
+      home: _isLoggedIn ? MainWrapper() : SplashScreen(),
     );
   }
 }
