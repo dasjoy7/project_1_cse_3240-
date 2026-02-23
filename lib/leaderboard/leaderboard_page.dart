@@ -13,17 +13,17 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   bool isLoading = true;
   String? currentUserId;
   String? currentUserCategory;
-  
+
   // Filter values
   String selectedCategory = 'All';
   String selectedDivision = 'All';
   String selectedDistrict = 'All';
-  
+
   // Available filter options
   List<String> categories = ['All', 'Junior', 'Secondary', 'Higher Sec'];
   List<String> divisions = ['All'];
   List<String> districts = ['All'];
-  
+
   // Bangladesh divisions and districts mapping
   final Map<String, List<String>> _locations = {
     'Barishal': [
@@ -107,7 +107,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   Future<void> _initializeFilters() async {
     try {
       currentUserId = Supabase.instance.client.auth.currentUser?.id;
-      
+
       if (currentUserId != null) {
         // Get current user's category
         final userProfile = await Supabase.instance.client
@@ -115,11 +115,11 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
             .select('category')
             .eq('id', currentUserId!)
             .single();
-        
+
         currentUserCategory = userProfile['category'];
         selectedCategory = currentUserCategory ?? 'All';
       }
-      
+
       // Fetch all unique divisions and districts
       await _loadFilterOptions();
       await _loadLeaderboard();
@@ -135,7 +135,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     // Use predefined divisions
     setState(() {
       divisions = ['All', ..._locations.keys.toList()];
-      
+
       // Initially show all districts from all divisions
       Set<String> allDistricts = {'All'};
       for (var districtList in _locations.values) {
@@ -144,7 +144,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
       districts = allDistricts.toList()..sort();
     });
   }
-  
+
   void _updateDistrictsForDivision(String division) {
     setState(() {
       if (division == 'All') {
@@ -158,7 +158,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
       } else {
         // Show only districts for selected division
         districts = ['All', ...(_locations[division] ?? [])];
-        
+
         // Reset district selection if current selection is not in new list
         if (!districts.contains(selectedDistrict)) {
           selectedDistrict = 'All';
@@ -177,20 +177,20 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
       var query = Supabase.instance.client
           .from('profile')
           .select('id, username, full_name, institution, category, division, district, rating, student_class');
-      
+
       // Apply filters
       if (selectedCategory != 'All') {
         query = query.eq('category', selectedCategory);
       }
-      
+
       if (selectedDivision != 'All') {
         query = query.eq('division', selectedDivision);
       }
-      
+
       if (selectedDistrict != 'All') {
         query = query.eq('district', selectedDistrict);
       }
-      
+
       // Order by rating descending
       final response = await query.order('rating', ascending: false);
 
@@ -243,7 +243,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                   }).toList(),
                 ),
                 const SizedBox(height: 16),
-                
+
                 const Text(
                   'Division',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -264,7 +264,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                   onChanged: (value) {
                     setDialogState(() {
                       tempDivision = value!;
-                      
+
                       // Update available districts based on selected division
                       if (tempDivision == 'All') {
                         Set<String> allDistricts = {'All'};
@@ -275,7 +275,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                         tempDistrict = 'All';
                       } else {
                         districts = ['All', ...(_locations[tempDivision] ?? [])];
-                        
+
                         // Reset district if not in new list
                         if (!districts.contains(tempDistrict)) {
                           tempDistrict = 'All';
@@ -285,7 +285,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                   },
                 ),
                 const SizedBox(height: 16),
-                
+
                 const Text(
                   'District',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -448,220 +448,220 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                 ],
               ),
             ),
-          
+
           // Leaderboard List
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : leaderboard.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No users found',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ? const Center(
+              child: Text(
+                'No users found',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            )
+                : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: leaderboard.length,
+              itemBuilder: (context, index) {
+                final entry = leaderboard[index];
+                final username = entry['username'] ?? 'Unknown';
+                final fullName = entry['full_name'] ?? 'Unknown';
+                final institution = entry['institution'] ?? '';
+                final rating = (entry['rating'] as num?)?.toInt() ?? 0;
+                final userId = entry['id'];
+                final category = entry['category'] ?? '';
+                final division = entry['division'] ?? '';
+                final district = entry['district'] ?? '';
+                final studentClass = entry['student_class'] ?? 0;
+                final isCurrentUser = userId == currentUserId;
+
+                // Calculate rank considering ties
+                int rank = 1;
+                if (index > 0) {
+                  final prevEntry = leaderboard[index - 1];
+                  final prevRating = (prevEntry['rating'] as num?)?.toInt() ?? 0;
+
+                  if (rating == prevRating) {
+                    // Find the rank of the first person in this tie group
+                    for (int i = index - 1; i >= 0; i--) {
+                      final checkEntry = leaderboard[i];
+                      final checkRating = (checkEntry['rating'] as num?)?.toInt() ?? 0;
+
+                      if (checkRating == rating) {
+                        rank = i + 1;
+                      } else {
+                        break;
+                      }
+                    }
+                  } else {
+                    rank = index + 1;
+                  }
+                }
+
+                // Medal colors for top 3
+                Color? rankColor;
+                IconData? medalIcon;
+                if (rank == 1) {
+                  rankColor = Colors.amber;
+                  medalIcon = Icons.emoji_events;
+                } else if (rank == 2) {
+                  rankColor = Colors.grey[400];
+                  medalIcon = Icons.emoji_events;
+                } else if (rank == 3) {
+                  rankColor = Colors.brown[300];
+                  medalIcon = Icons.emoji_events;
+                }
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  elevation: isCurrentUser ? 4 : 1,
+                  color: isCurrentUser ? Colors.blue.shade50 : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: isCurrentUser
+                        ? BorderSide(color: Colors.blue, width: 2)
+                        : BorderSide.none,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        // Rank
+                        SizedBox(
+                          width: 50,
+                          child: Column(
+                            children: [
+                              if (medalIcon != null)
+                                Icon(medalIcon, color: rankColor, size: 32)
+                              else
+                                Text(
+                                  '#$rank',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: leaderboard.length,
-                        itemBuilder: (context, index) {
-                          final entry = leaderboard[index];
-                          final username = entry['username'] ?? 'Unknown';
-                          final fullName = entry['full_name'] ?? 'Unknown';
-                          final institution = entry['institution'] ?? '';
-                          final rating = (entry['rating'] as num?)?.toInt() ?? 0;
-                          final userId = entry['id'];
-                          final category = entry['category'] ?? '';
-                          final division = entry['division'] ?? '';
-                          final district = entry['district'] ?? '';
-                          final studentClass = entry['student_class'] ?? 0;
-                          final isCurrentUser = userId == currentUserId;
-                          
-                          // Calculate rank considering ties
-                          int rank = 1;
-                          if (index > 0) {
-                            final prevEntry = leaderboard[index - 1];
-                            final prevRating = (prevEntry['rating'] as num?)?.toInt() ?? 0;
-                            
-                            if (rating == prevRating) {
-                              // Find the rank of the first person in this tie group
-                              for (int i = index - 1; i >= 0; i--) {
-                                final checkEntry = leaderboard[i];
-                                final checkRating = (checkEntry['rating'] as num?)?.toInt() ?? 0;
-                                
-                                if (checkRating == rating) {
-                                  rank = i + 1;
-                                } else {
-                                  break;
-                                }
-                              }
-                            } else {
-                              rank = index + 1;
-                            }
-                          }
+                        const SizedBox(width: 12),
 
-                          // Medal colors for top 3
-                          Color? rankColor;
-                          IconData? medalIcon;
-                          if (rank == 1) {
-                            rankColor = Colors.amber;
-                            medalIcon = Icons.emoji_events;
-                          } else if (rank == 2) {
-                            rankColor = Colors.grey[400];
-                            medalIcon = Icons.emoji_events;
-                          } else if (rank == 3) {
-                            rankColor = Colors.brown[300];
-                            medalIcon = Icons.emoji_events;
-                          }
-
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            elevation: isCurrentUser ? 4 : 1,
-                            color: isCurrentUser ? Colors.blue.shade50 : Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: isCurrentUser
-                                  ? BorderSide(color: Colors.blue, width: 2)
-                                  : BorderSide.none,
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Row(
+                        // User Info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
                                 children: [
-                                  // Rank
-                                  SizedBox(
-                                    width: 50,
-                                    child: Column(
-                                      children: [
-                                        if (medalIcon != null)
-                                          Icon(medalIcon, color: rankColor, size: 32)
-                                        else
-                                          Text(
-                                            '#$rank',
-                                            style: const TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  
-                                  // User Info
                                   Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                fullName,
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: isCurrentUser
-                                                      ? Colors.blue.shade900
-                                                      : Colors.black,
-                                                ),
-                                              ),
-                                            ),
-                                            if (isCurrentUser)
-                                              Container(
-                                                margin: const EdgeInsets.only(left: 8),
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                  vertical: 2,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.blue,
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                child: const Text(
-                                                  'You',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '@$username',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                        if (institution.isNotEmpty)
-                                          Text(
-                                            institution,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey[500],
-                                            ),
-                                          ),
-                                        const SizedBox(height: 8),
-                                        Wrap(
-                                          spacing: 6,
-                                          runSpacing: 6,
-                                          children: [
-                                            _buildInfoChip(
-                                              label: category,
-                                              color: Colors.purple,
-                                            ),
-                                            _buildInfoChip(
-                                              label: 'Class $studentClass',
-                                              color: Colors.teal,
-                                            ),
-                                            if (division.isNotEmpty)
-                                              _buildInfoChip(
-                                                label: division,
-                                                color: Colors.indigo,
-                                              ),
-                                            if (district.isNotEmpty)
-                                              _buildInfoChip(
-                                                label: district,
-                                                color: Colors.cyan,
-                                              ),
-                                          ],
-                                        ),
-                                      ],
+                                    child: Text(
+                                      fullName,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: isCurrentUser
+                                            ? Colors.blue.shade900
+                                            : Colors.black,
+                                      ),
                                     ),
                                   ),
-                                  
-                                  // Rating
-                                  Column(
-                                    children: [
-                                      Text(
-                                        '$rating',
-                                        style: TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                          color: rating >= 0
-                                              ? Colors.green.shade700
-                                              : Colors.red.shade700,
-                                        ),
+                                  if (isCurrentUser)
+                                    Container(
+                                      margin: const EdgeInsets.only(left: 8),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
                                       ),
-                                      Text(
-                                        'points',
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Text(
+                                        'You',
                                         style: TextStyle(
+                                          color: Colors.white,
                                           fontSize: 12,
-                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ),
                                 ],
                               ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '@$username',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              if (institution.isNotEmpty)
+                                Text(
+                                  institution,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  _buildInfoChip(
+                                    label: category,
+                                    color: Colors.purple,
+                                  ),
+                                  _buildInfoChip(
+                                    label: 'Class $studentClass',
+                                    color: Colors.teal,
+                                  ),
+                                  if (division.isNotEmpty)
+                                    _buildInfoChip(
+                                      label: division,
+                                      color: Colors.indigo,
+                                    ),
+                                  if (district.isNotEmpty)
+                                    _buildInfoChip(
+                                      label: district,
+                                      color: Colors.cyan,
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Rating
+                        Column(
+                          children: [
+                            Text(
+                              '$rating',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: rating >= 0
+                                    ? Colors.green.shade700
+                                    : Colors.red.shade700,
+                              ),
                             ),
-                          );
-                        },
-                      ),
+                            Text(
+                              'points',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),

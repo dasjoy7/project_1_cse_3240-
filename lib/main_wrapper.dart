@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:project_1_cse_3240/home/home_page.dart';
-import 'package:project_1_cse_3240/profile/screens/profile_page.dart';
-import 'package:project_1_cse_3240/problems/screens/problem_list_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-import 'package:project_1_cse_3240/home/home_page.dart';
-import 'package:project_1_cse_3240/leaderboard_page.dart';
+import 'package:project_1_cse_3240/leaderboard//leaderboard_page.dart';
 import 'package:project_1_cse_3240/contest/contest_page.dart';
-import 'package:project_1_cse_3240/features/auth/pages/login_page.dart';
+import 'package:project_1_cse_3240/problem/problem_page.dart';
 import 'package:project_1_cse_3240/widgets/app_drawer.dart';
-import 'package:project_1_cse_3240/widgets/user_search_delegate.dart'; 
+import 'package:project_1_cse_3240/widgets/user_search_delegate.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -22,17 +16,19 @@ class _MainWrapperState extends State<MainWrapper> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    const HomePage(),
-    const ProblemListPage(),
+    // const HomePage(),
+    const Center(child: Text("Home page")),
+    const ProblemPage(),
     const LeaderboardPage(),
     const ContestPage(),
-    const ProfilePage(),
+    const Center(child: Text("Profile Page")),
+    // const ProfilePage(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // extendBody: true,
+      extendBody: true,
       appBar: AppBar(
         title: const Text(
           "Math Arena",

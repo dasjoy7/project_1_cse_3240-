@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:project_1_cse_3240/widgets/common_widgets.dart';
+import 'package:project_1_cse_3240/common_widgets.dart';
 import 'login_page.dart';
 
 class SignUpPage extends StatefulWidget {

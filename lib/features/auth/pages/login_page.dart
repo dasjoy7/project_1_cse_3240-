@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project_1_cse_3240/main_wrapper.dart';
-import 'package:project_1_cse_3240/widgets/common_widgets.dart';
+import 'package:project_1_cse_3240/common_widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'signup_page.dart';
 
