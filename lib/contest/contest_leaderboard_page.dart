@@ -19,7 +19,6 @@ class _ContestLeaderboardPageState extends State<ContestLeaderboardPage> {
   List<Map<String, dynamic>> leaderboard = [];
   bool isLoading = true;
   String? currentUserId;
-  int totalQuestions = 8; // Default to 8, will be updated
 
   @override
   void initState() {
@@ -30,14 +29,6 @@ class _ContestLeaderboardPageState extends State<ContestLeaderboardPage> {
   Future<void> _loadLeaderboard() async {
     try {
       currentUserId = Supabase.instance.client.auth.currentUser?.id;
-
-      // Get the actual number of questions for this contest
-      final questionsResponse = await Supabase.instance.client
-          .from('questions')
-          .select('serial_number')
-          .eq('contest_id', widget.contestId);
-
-      totalQuestions = questionsResponse.length;
 
       // Get all submissions for this contest with user details
       final submissions = await Supabase.instance.client
@@ -63,44 +54,11 @@ class _ContestLeaderboardPageState extends State<ContestLeaderboardPage> {
             serial_8_attempts,
             profile!inner(username, full_name, institution)
           ''')
-          .eq('contest_id', widget.contestId);
-
-      // Convert to list and sort with tie-breaking rules
-      List<Map<String, dynamic>> sortedSubmissions = List<Map<String, dynamic>>.from(submissions);
-
-      sortedSubmissions.sort((a, b) {
-        // Primary: Sort by rating (descending)
-        int ratingA = (a['rating'] as num?)?.toInt() ?? 0;
-        int ratingB = (b['rating'] as num?)?.toInt() ?? 0;
-
-        if (ratingA != ratingB) {
-          return ratingB.compareTo(ratingA); // Higher rating first
-        }
-
-        // Tie-breaker 1: More solved questions wins
-        int solvedA = _countSolvedQuestions(a);
-        int solvedB = _countSolvedQuestions(b);
-
-        if (solvedA != solvedB) {
-          return solvedB.compareTo(solvedA); // More solved first
-        }
-
-        // Tie-breaker 2: Fewer attempts wins
-        int attemptsA = _countTotalAttempts(a);
-        int attemptsB = _countTotalAttempts(b);
-
-        if (attemptsA != attemptsB) {
-          return attemptsA.compareTo(attemptsB); // Fewer attempts first
-        }
-
-        // Tie-breaker 3: Alphabetical by username
-        String usernameA = a['profile']['username'] ?? '';
-        String usernameB = b['profile']['username'] ?? '';
-        return usernameA.compareTo(usernameB);
-      });
+          .eq('contest_id', widget.contestId)
+          .order('rating', ascending: false);
 
       setState(() {
-        leaderboard = sortedSubmissions;
+        leaderboard = List<Map<String, dynamic>>.from(submissions);
         isLoading = false;
       });
     } catch (e) {
@@ -113,7 +71,7 @@ class _ContestLeaderboardPageState extends State<ContestLeaderboardPage> {
 
   int _countSolvedQuestions(Map<String, dynamic> submission) {
     int solved = 0;
-    for (int i = 1; i <= totalQuestions; i++) {
+    for (int i = 1; i <= 8; i++) {
       if (submission['serial_$i'] == 1) {
         solved++;
       }
@@ -123,7 +81,7 @@ class _ContestLeaderboardPageState extends State<ContestLeaderboardPage> {
 
   int _countTotalAttempts(Map<String, dynamic> submission) {
     int attempts = 0;
-    for (int i = 1; i <= totalQuestions; i++) {
+    for (int i = 1; i <= 8; i++) {
       attempts += (submission['serial_${i}_attempts'] as int?) ?? 0;
     }
     return attempts;
@@ -159,40 +117,9 @@ class _ContestLeaderboardPageState extends State<ContestLeaderboardPage> {
 
           final solvedCount = _countSolvedQuestions(entry);
           final totalAttempts = _countTotalAttempts(entry);
+          final rank = index + 1;
 
-          // Calculate rank considering ties
-          int rank = 1;
-          if (index > 0) {
-            final prevEntry = leaderboard[index - 1];
-            final prevRating = (prevEntry['rating'] as num?)?.toInt() ?? 0;
-            final prevSolved = _countSolvedQuestions(prevEntry);
-            final prevAttempts = _countTotalAttempts(prevEntry);
-
-            // Check if current entry is tied with previous
-            if (rating == prevRating &&
-                solvedCount == prevSolved &&
-                totalAttempts == prevAttempts) {
-              // Find the rank of the first person in this tie group
-              for (int i = index - 1; i >= 0; i--) {
-                final checkEntry = leaderboard[i];
-                final checkRating = (checkEntry['rating'] as num?)?.toInt() ?? 0;
-                final checkSolved = _countSolvedQuestions(checkEntry);
-                final checkAttempts = _countTotalAttempts(checkEntry);
-
-                if (checkRating == rating &&
-                    checkSolved == solvedCount &&
-                    checkAttempts == totalAttempts) {
-                  rank = i + 1;
-                } else {
-                  break;
-                }
-              }
-            } else {
-              rank = index + 1;
-            }
-          }
-
-          // Medal colors for top 3 ranks
+          // Medal colors for top 3
           Color? rankColor;
           IconData? medalIcon;
           if (rank == 1) {
@@ -306,7 +233,7 @@ class _ContestLeaderboardPageState extends State<ContestLeaderboardPage> {
                           children: [
                             _buildStatChip(
                               icon: Icons.check_circle,
-                              label: '$solvedCount/$totalQuestions',
+                              label: '$solvedCount/8',
                               color: Colors.green,
                             ),
                             const SizedBox(width: 8),
