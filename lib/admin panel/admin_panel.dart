@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:project_1_cse_3240/admin%20panel/delete_problem_page.dart';
+import 'package:project_1_cse_3240/admin%20panel/manage_contests_page.dart';
 import 'add_problem_page.dart';
+import 'add_contest_page.dart';
 
 class AdminPanel extends StatelessWidget {
   const AdminPanel({super.key});
@@ -44,30 +46,44 @@ class AdminPanel extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.article_outlined),
-            title: const Text("Blog Request"),
-            // onTap: () {
-            //   // Navigate to Blog Request page
-            //   Navigator.push(
-            //     context,
-            //     MaterialPageRoute(
-            //       // builder: (context) => const BlogRequestPage(),
-            //     ),
-            //   );
-            // },
+            title: const Text("Add Contest"),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddContestPage(),
+                ),
+              );
+            },
           ),
           ListTile(
             leading: const Icon(Icons.person_add_alt),
-            title: const Text("Assign Admin"),
-            // onTap: () {
-            //   // Navigate to Assign Admin page
-            //   Navigator.push(
-            //     context,
-            //     MaterialPageRoute(
-            //       // builder: (context) => const AssignAdminPage(),
-            //     ),
-            //   );
-            // },
+            title: const Text("Manage Contests"),
+            onTap: () {
+           
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ManageContestsPage(),
+                ),
+              );
+            },
           ),
+
+          ListTile(
+            leading: const Icon(Icons.person),
+            title: const Text("Manage Blog Posts"),
+            onTap: () {
+           
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ManageContestsPage(),
+                ),
+              );
+            },
+          ),
+
         ],
       ),
     );
