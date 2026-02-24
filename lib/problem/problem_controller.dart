@@ -3,24 +3,72 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'problem_model.dart';
 
 class ProblemController extends ChangeNotifier {
+  // ── Singleton ────────────────────────────────────────────────────────────
+  static final ProblemController _instance = ProblemController._internal();
+  factory ProblemController() => _instance;
+  ProblemController._internal();
+
   final _client = Supabase.instance.client;
 
   List<ProblemModel> _problems = [];
   bool _isLoading = false;
   String? _error;
+  bool _initialized = false;
 
   // Filter state
   String? selectedDifficulty;
   String? selectedSubCategory;
 
+  RealtimeChannel? _realtimeChannel;
+
   List<ProblemModel> get problems => _problems;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  bool get hasActiveFilter => selectedDifficulty != null || selectedSubCategory != null;
+  bool get hasActiveFilter =>
+      selectedDifficulty != null || selectedSubCategory != null;
 
   String? get _userId => _client.auth.currentUser?.id;
 
+  // ── Prevent singleton from being disposed ────────────────────────────────
+  @override
+  void dispose() {
+    debugPrint('⚠️ dispose() called on singleton ProblemController — ignored');
+    // Do NOT call super.dispose() — singleton must stay alive
+  }
+
+  void forceDispose() {
+    _realtimeChannel?.unsubscribe();
+    super.dispose();
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────────────
+  void init() {
+    if (_initialized) return;
+    _initialized = true;
+    debugPrint('✅ ProblemController initialized');
+    fetchProblems();
+    _subscribeToRealtime();
+  }
+
+  // ── Realtime ──────────────────────────────────────────────────────────────
+  void _subscribeToRealtime() {
+    _realtimeChannel = _client
+        .channel('problems_changes')
+        .onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'problems',
+      callback: (payload) {
+        debugPrint('🟢 Realtime event: ${payload.eventType}');
+        fetchProblems();
+      },
+    )
+        .subscribe();
+    debugPrint('🔴 Realtime subscribed');
+  }
+
+  // ── Filters ───────────────────────────────────────────────────────────────
   List<String> subCategoriesFor(String mainCategory) {
     return _problems
         .where((p) => p.mainCategory == mainCategory)
@@ -50,25 +98,31 @@ class ProblemController extends ChangeNotifier {
     return _problems.where((p) {
       if (p.mainCategory != category) return false;
       if (selectedDifficulty != null &&
-          p.difficulty.toLowerCase() != selectedDifficulty!.toLowerCase()) return false;
-      if (selectedSubCategory != null && p.subCategory != selectedSubCategory) return false;
+          p.difficulty.toLowerCase() != selectedDifficulty!.toLowerCase())
+        return false;
+      if (selectedSubCategory != null && p.subCategory != selectedSubCategory)
+        return false;
       return true;
     }).toList();
   }
 
+  // ── Fetch ─────────────────────────────────────────────────────────────────
   Future<void> fetchProblems() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final problemsData = await _client.from('problems').select().order('created_at');
-      _problems = (problemsData as List).map((e) => ProblemModel.fromMap(e)).toList();
+      final problemsData =
+      await _client.from('problems').select().order('created_at');
+      debugPrint('✅ Fetched ${(problemsData as List).length} problems');
+      _problems = problemsData.map((e) => ProblemModel.fromMap(e)).toList();
 
       if (_userId != null) {
         await _markUserProgress();
       }
     } catch (e) {
+      debugPrint('❌ fetchProblems error: $e');
       _error = e.toString();
     }
 
@@ -76,6 +130,7 @@ class ProblemController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── User Progress ─────────────────────────────────────────────────────────
   Future<void> _markUserProgress() async {
     if (_userId == null) return;
     final subs = await _client
@@ -99,6 +154,7 @@ class ProblemController extends ChangeNotifier {
     }
   }
 
+  // ── Submit Answer ─────────────────────────────────────────────────────────
   Future<SubmissionResult> submitAnswer({
     required String problemId,
     required String userAnswer,
@@ -114,14 +170,12 @@ class ProblemController extends ChangeNotifier {
       final difficulty = problem.difficulty.toLowerCase();
       final wasAlreadySolvedCorrectly = problem.userSolvedCorrectly == true;
 
-      // 1. Store submission — trigger auto-increments total_submission on problems table
       await _client.from('submissions').insert({
         'user_id': _userId,
         'problem_id': problemId,
         'is_correct': isCorrect,
       });
 
-      // 2. Fetch updated total_submission to sync local card
       final current = await _client
           .from('problems')
           .select('total_submission')
@@ -129,14 +183,12 @@ class ProblemController extends ChangeNotifier {
           .single();
       problem.totalSubmission = (current['total_submission'] ?? 0) as int;
 
-      // 5. Update profile stats
       await _updateProfileStats(
         isCorrect: isCorrect,
         difficulty: difficulty,
         wasAlreadySolvedCorrectly: wasAlreadySolvedCorrectly,
       );
 
-      // 6. Update solved status locally
       if (isCorrect) {
         problem.userSolvedCorrectly = true;
       } else {
@@ -147,11 +199,12 @@ class ProblemController extends ChangeNotifier {
 
       return isCorrect ? SubmissionResult.correct : SubmissionResult.wrong;
     } catch (e) {
-      debugPrint('submitAnswer error: $e');
+      debugPrint('❌ submitAnswer error: $e');
       return SubmissionResult.failed;
     }
   }
 
+  // ── Profile Stats ─────────────────────────────────────────────────────────
   Future<void> _updateProfileStats({
     required bool isCorrect,
     required String difficulty,
@@ -202,6 +255,7 @@ class ProblemController extends ChangeNotifier {
     }).eq('id', _userId!);
   }
 
+  // ── Submission History ────────────────────────────────────────────────────
   Future<List<SubmissionModel>> getSubmissionHistory(String problemId) async {
     if (_userId == null) return [];
     final data = await _client

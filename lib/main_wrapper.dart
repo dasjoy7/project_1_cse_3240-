@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project_1_cse_3240/admin%20panel/admin_panel.dart';
 import 'package:project_1_cse_3240/contest/contest_page.dart';
 import 'package:project_1_cse_3240/features/auth/pages/login_page.dart';
 import 'package:project_1_cse_3240/home/home_page.dart';
@@ -42,7 +43,6 @@ class _MainWrapperState extends State<MainWrapper> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // extendBody: true,
       appBar: AppBar(
         title: const Text("Math Arena"),
         backgroundColor: const Color(0xFF1E88E5),
@@ -86,32 +86,47 @@ class _MainWrapperState extends State<MainWrapper> {
               onTap: () => Navigator.pop(context),
             ),
             const Divider(),
+
+            // Admin Panel option added here
+            ListTile(
+              leading: const Icon(Icons.admin_panel_settings),
+              title: const Text("Admin Panel"),
+              onTap: () {
+                // Navigate to the Admin Panel screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdminPanel(),
+                  ),
+                );
+              },
+            ),
+            const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text("Logout", style: TextStyle(color: Colors.red)),
               onTap: () async {
-                bool confirm =
-                    await showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text("Logout"),
-                        content: const Text("Are you sure you want to exit?"),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text("Cancel"),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text(
-                              "Logout",
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ),
-                        ],
+                bool confirm = await showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text("Logout"),
+                    content: const Text("Are you sure you want to exit?"),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text("Cancel"),
                       ),
-                    ) ??
-                        false;
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text(
+                          "Logout",
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                ) ??
+                    false;
 
                 if (confirm) {
                   await Supabase.instance.client.auth.signOut();
@@ -130,7 +145,6 @@ class _MainWrapperState extends State<MainWrapper> {
           ],
         ),
       ),
-
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) {
@@ -140,7 +154,6 @@ class _MainWrapperState extends State<MainWrapper> {
         },
         children: _screens,
       ),
-
       bottomNavigationBar: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
         decoration: BoxDecoration(

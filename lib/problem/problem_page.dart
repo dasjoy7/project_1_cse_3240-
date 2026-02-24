@@ -11,33 +11,36 @@ class ProblemPage extends StatefulWidget {
   State<ProblemPage> createState() => _ProblemPageState();
 }
 
-class _ProblemPageState extends State<ProblemPage> with SingleTickerProviderStateMixin {
+class _ProblemPageState extends State<ProblemPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final ProblemController _controller = ProblemController();
+  final ProblemController _controller = ProblemController(); // gets singleton
 
   final List<String> _categories = ['Mathematical', 'Logical', 'Puzzle'];
   final List<String> _difficulties = ['Easy', 'Medium', 'Hard'];
+
+  void _onControllerUpdate() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _categories.length, vsync: this);
     _tabController.addListener(() {
-      // Clear sub_category filter when switching tabs (sub-cats differ per category)
       if (!_tabController.indexIsChanging) {
         _controller.setSubCategory(null);
       }
     });
-    _controller.fetchProblems();
-    _controller.addListener(() {
-      if (mounted) setState(() {});
-    });
+    _controller.init();
+    _controller.addListener(_onControllerUpdate);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _controller.dispose();
+    _controller.removeListener(_onControllerUpdate); // ✅ only remove listener
+    // ❌ do NOT call _controller.dispose()
     super.dispose();
   }
 
@@ -72,7 +75,6 @@ class _ProblemPageState extends State<ProblemPage> with SingleTickerProviderStat
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Handle bar
                   Center(
                     child: Container(
                       width: 40,
@@ -84,13 +86,12 @@ class _ProblemPageState extends State<ProblemPage> with SingleTickerProviderStat
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Header
                   Row(
                     children: [
                       const Text(
                         'Filter Problems',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       const Spacer(),
                       if (_controller.hasActiveFilter)
@@ -107,11 +108,12 @@ class _ProblemPageState extends State<ProblemPage> with SingleTickerProviderStat
                     ],
                   ),
                   const SizedBox(height: 20),
-
-                  // Difficulty filter
                   const Text(
                     'Difficulty',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.black54),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: Colors.black54),
                   ),
                   const SizedBox(height: 10),
                   Wrap(
@@ -134,7 +136,9 @@ class _ProblemPageState extends State<ProblemPage> with SingleTickerProviderStat
                             : Colors.red;
                         return _FilterChip(
                           label: d,
-                          selected: _controller.selectedDifficulty?.toLowerCase() == d.toLowerCase(),
+                          selected:
+                          _controller.selectedDifficulty?.toLowerCase() ==
+                              d.toLowerCase(),
                           color: color,
                           onTap: () {
                             _controller.setDifficulty(d);
@@ -144,16 +148,15 @@ class _ProblemPageState extends State<ProblemPage> with SingleTickerProviderStat
                       }),
                     ],
                   ),
-
                   const SizedBox(height: 24),
-
-                  // Sub-category filter
                   const Text(
                     'Sub Category',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.black54),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: Colors.black54),
                   ),
                   const SizedBox(height: 10),
-
                   if (subCategories.isEmpty)
                     const Text(
                       'No sub-categories available.',
@@ -184,10 +187,7 @@ class _ProblemPageState extends State<ProblemPage> with SingleTickerProviderStat
                         )),
                       ],
                     ),
-
                   const SizedBox(height: 24),
-
-                  // Apply button
                   SizedBox(
                     width: double.infinity,
                     height: 48,
@@ -200,7 +200,8 @@ class _ProblemPageState extends State<ProblemPage> with SingleTickerProviderStat
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text('Apply', style: TextStyle(fontSize: 16)),
+                      child:
+                      const Text('Apply', style: TextStyle(fontSize: 16)),
                     ),
                   ),
                 ],
@@ -241,7 +242,8 @@ class _ProblemPageState extends State<ProblemPage> with SingleTickerProviderStat
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade400),
+            Icon(Icons.search_off_rounded,
+                size: 64, color: Colors.grey.shade400),
             const SizedBox(height: 12),
             Text(
               _controller.hasActiveFilter
@@ -254,7 +256,8 @@ class _ProblemPageState extends State<ProblemPage> with SingleTickerProviderStat
               const SizedBox(height: 12),
               TextButton(
                 onPressed: _controller.clearFilters,
-                child: const Text('Clear Filters', style: TextStyle(color: Colors.deepPurple)),
+                child: const Text('Clear Filters',
+                    style: TextStyle(color: Colors.deepPurple)),
               ),
             ]
           ],
@@ -335,17 +338,17 @@ class _ProblemPageState extends State<ProblemPage> with SingleTickerProviderStat
           tabs: _categories.map((c) => Tab(text: c)).toList(),
         ),
       ),
-
-      // Active filter chips row
       body: Column(
         children: [
           if (_controller.hasActiveFilter)
             Container(
               color: Colors.deepPurple.shade50,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  const Icon(Icons.filter_list, size: 16, color: Colors.deepPurple),
+                  const Icon(Icons.filter_list,
+                      size: 16, color: Colors.deepPurple),
                   const SizedBox(width: 6),
                   const Text(
                     'Filtered by: ',
@@ -379,7 +382,8 @@ class _ProblemPageState extends State<ProblemPage> with SingleTickerProviderStat
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: _categories.map((c) => _buildProblemList(c)).toList(),
+              children:
+              _categories.map((c) => _buildProblemList(c)).toList(),
             ),
           ),
         ],
@@ -413,7 +417,8 @@ class _FilterChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? color : color.withOpacity(0.08),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? color : color.withOpacity(0.3)),
+          border:
+          Border.all(color: selected ? color : color.withOpacity(0.3)),
         ),
         child: Text(
           label,
