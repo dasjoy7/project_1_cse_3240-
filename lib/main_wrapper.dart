@@ -7,6 +7,7 @@ import 'package:project_1_cse_3240/leaderboard/leaderboard_page.dart';
 import 'package:project_1_cse_3240/problem/problem_page.dart';
 import 'package:project_1_cse_3240/profile/profile_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'friends/find_friends_page.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -97,6 +98,19 @@ class _MainWrapperState extends State<MainWrapper> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const AdminPanel(),
+                  ),
+                );
+              },
+            ),
+
+            ListTile(
+              leading: const Icon(Icons.admin_panel_settings),
+              title: const Text("Friends"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const FindFriendsPage(),
                   ),
                 );
               },
