@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:project_1_cse_3240/ai/ask_ai_page.dart';
+import 'package:project_1_cse_3240/blog%20page/blog_page.dart';
 import 'package:project_1_cse_3240/contest/contest_page.dart';
 import 'package:project_1_cse_3240/features/auth/pages/login_page.dart';
 import 'package:project_1_cse_3240/home/home_page.dart';
@@ -25,7 +27,7 @@ class _MainWrapperState extends State<MainWrapper> {
     const ProblemPage(),
     const LeaderboardPage(),
     const ContestPage(),
-    const Center(child: Text("Blog")),
+    const BlogPage()
   ];
 
   late PageController _pageController;
@@ -168,7 +170,18 @@ class _MainWrapperState extends State<MainWrapper> {
                 );
               },
             ),
-            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.smart_toy_outlined),
+              title: const Text("AI Tutor"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AskAIPage(),
+                  ),
+                );
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text("Logout", style: TextStyle(color: Colors.red)),
