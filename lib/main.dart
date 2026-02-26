@@ -33,7 +33,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> _checkSession() async {
     final session = Supabase.instance.client.auth.currentSession;
     setState(() {
-      _isLoggedIn = session != null; // If session exists, user is logged in
+      _isLoggedIn = session != null;
     });
   }
 

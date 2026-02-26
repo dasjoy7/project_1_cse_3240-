@@ -16,19 +16,16 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _isLoading = false;
   bool _isPasswordVisible = false;
 
-  // Controllers
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _institutionController = TextEditingController();
 
-  // Selection States
   int _selectedClass = 9;
   String? _selectedDivision;
   String? _selectedDistrict;
 
-  // Logic: Map Class to Category
   String _getCategoryFromClass(int studentClass) {
     if (studentClass >= 6 && studentClass <= 8) return 'Junior';
     if (studentClass >= 9 && studentClass <= 10) return 'Secondary';
@@ -37,76 +34,14 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   final Map<String, List<String>> _locations = {
-    'Barishal': [
-      'Barguna',
-      'Barishal',
-      'Bhola',
-      'Jhalokati',
-      'Patuakhali',
-      'Pirojpur',
-    ],
-    'Chattogram': [
-      'Bandarban',
-      'Brahmanbaria',
-      'Chandpur',
-      'Chattogram',
-      'Cumilla',
-      "Cox's Bazar",
-      'Feni',
-      'Khagrachari',
-      'Lakshmipur',
-      'Noakhali',
-      'Rangamati',
-    ],
-    'Dhaka': [
-      'Dhaka',
-      'Faridpur',
-      'Gazipur',
-      'Gopalganj',
-      'Kishoreganj',
-      'Madaripur',
-      'Manikganj',
-      'Munshiganj',
-      'Narayanganj',
-      'Narsingdi',
-      'Rajbari',
-      'Shariatpur',
-      'Tangail',
-    ],
-    'Khulna': [
-      'Bagerhat',
-      'Chuadanga',
-      'Jashore',
-      'Jhenaidah',
-      'Khulna',
-      'Kushtia',
-      'Magura',
-      'Meherpur',
-      'Narail',
-      'Satkhira',
-    ],
-    'Mymensingh': ['Jamalpur', 'Mymensingh', 'Netrokona', 'Sherpur'],
-    'Rajshahi': [
-      'Bogura',
-      'Joypurhat',
-      'Naogaon',
-      'Natore',
-      'Chapainawabganj',
-      'Pabna',
-      'Rajshahi',
-      'Sirajganj',
-    ],
-    'Rangpur': [
-      'Dinajpur',
-      'Gaibandha',
-      'Kurigram',
-      'Lalmonirhat',
-      'Nilphamari',
-      'Panchagarh',
-      'Rangpur',
-      'Thakurgaon',
-    ],
-    'Sylhet': ['Habiganj', 'Moulvibazar', 'Sunamganj', 'Sylhet'],
+    'Barishal': ['Barguna','Barishal','Bhola','Jhalokati','Patuakhali','Pirojpur'],
+    'Chattogram': ['Bandarban','Brahmanbaria','Chandpur','Chattogram','Cumilla',"Cox's Bazar",'Feni','Khagrachari','Lakshmipur','Noakhali','Rangamati'],
+    'Dhaka': ['Dhaka','Faridpur','Gazipur','Gopalganj','Kishoreganj','Madaripur','Manikganj','Munshiganj','Narayanganj','Narsingdi','Rajbari','Shariatpur','Tangail'],
+    'Khulna': ['Bagerhat','Chuadanga','Jashore','Jhenaidah','Khulna','Kushtia','Magura','Meherpur','Narail','Satkhira'],
+    'Mymensingh': ['Jamalpur','Mymensingh','Netrokona','Sherpur'],
+    'Rajshahi': ['Bogura','Joypurhat','Naogaon','Natore','Chapainawabganj','Pabna','Rajshahi','Sirajganj'],
+    'Rangpur': ['Dinajpur','Gaibandha','Kurigram','Lalmonirhat','Nilphamari','Panchagarh','Rangpur','Thakurgaon'],
+    'Sylhet': ['Habiganj','Moulvibazar','Sunamganj','Sylhet'],
   };
 
   @override
@@ -146,20 +81,18 @@ class _SignUpPageState extends State<SignUpPage> {
 
       if (res.user == null) throw Exception("User creation failed.");
 
-      // NO manual profile insert — trigger handles it
-
+      // Trigger handles profile insert automatically
       if (!mounted) return;
 
       CommonUI.showSnackBar(context, "Success! Check your email to verify account.");
-
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LoginPage()),
       );
     } on AuthException catch (e) {
-      if (mounted) CommonUI.showSnackBar(context, e.message, isError: true);
+      if (mounted) CommonUI.showSnackBar(context, "Auth Error: ${e.message} | ${e.statusCode}", isError: true);
     } on PostgrestException catch (e) {
-      if (mounted) CommonUI.showSnackBar(context, "Database Error: ${e.message}", isError: true);
+      if (mounted) CommonUI.showSnackBar(context, "Database Error: ${e.message} | ${e.code}", isError: true);
     } catch (e) {
       if (mounted) CommonUI.showSnackBar(context, "Unexpected Error: $e", isError: true);
     } finally {
@@ -192,15 +125,12 @@ class _SignUpPageState extends State<SignUpPage> {
                 "Create your account and start solving problems",
                 style: TextStyle(color: Colors.grey, fontSize: 14),
               ),
-
               const SizedBox(height: 20),
 
               CommonUI.buildLabel("Full Name"),
               TextFormField(
                 controller: _nameController,
-                validator: (v) => v!.isEmpty
-                    ? "Full name is required"
-                    : null, //v! bang operator (null safety)
+                validator: (v) => v!.isEmpty ? "Full name is required" : null,
                 decoration: CommonUI.modernInputStyle(
                   hintText: "Enter your full name",
                   prefixIcon: Icons.person_outline,
@@ -210,8 +140,7 @@ class _SignUpPageState extends State<SignUpPage> {
               CommonUI.buildLabel("Username"),
               TextFormField(
                 controller: _usernameController,
-                validator: (v) =>
-                v!.length < 3 ? "Username must be 3+ chars" : null,
+                validator: (v) => v!.length < 3 ? "Username must be 3+ chars" : null,
                 decoration: CommonUI.modernInputStyle(
                   hintText: "@username",
                   prefixIcon: Icons.alternate_email,
@@ -221,8 +150,7 @@ class _SignUpPageState extends State<SignUpPage> {
               CommonUI.buildLabel("Email"),
               TextFormField(
                 controller: _emailController,
-                validator: (v) =>
-                !v!.contains('@') ? "Enter a valid email" : null,
+                validator: (v) => !v!.contains('@') ? "Enter a valid email" : null,
                 keyboardType: TextInputType.emailAddress,
                 decoration: CommonUI.modernInputStyle(
                   hintText: "your.email@example.com",
@@ -256,9 +184,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         width: 50,
                         margin: const EdgeInsets.only(right: 10),
                         decoration: BoxDecoration(
-                          color: selected
-                              ? const Color(0xFF1E88E5)
-                              : const Color(0xFFF3F4F6),
+                          color: selected ? const Color(0xFF1E88E5) : const Color(0xFFF3F4F6),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Center(
@@ -279,11 +205,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 padding: const EdgeInsets.only(top: 8, left: 4),
                 child: Text(
                   "Category: ${_getCategoryFromClass(_selectedClass)}",
-                  style: const TextStyle(
-                    color: Colors.blueGrey,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(color: Colors.blueGrey, fontSize: 12, fontWeight: FontWeight.w600),
                 ),
               ),
 
@@ -300,15 +222,10 @@ class _SignUpPageState extends State<SignUpPage> {
                           decoration: CommonUI.modernInputStyle(),
                           value: _selectedDivision,
                           items: _locations.keys
-                              .map(
-                                (d) => DropdownMenuItem(
-                              value: d,
-                              child: Text(
-                                d,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ),
-                          )
+                              .map((d) => DropdownMenuItem(
+                                    value: d,
+                                    child: Text(d, style: const TextStyle(fontSize: 12)),
+                                  ))
                               .toList(),
                           onChanged: (v) => setState(() {
                             _selectedDivision = v;
@@ -330,18 +247,12 @@ class _SignUpPageState extends State<SignUpPage> {
                           items: (_selectedDivision == null)
                               ? []
                               : _locations[_selectedDivision]!
-                              .map(
-                                (d) => DropdownMenuItem(
-                              value: d,
-                              child: Text(
-                                d,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ),
-                          )
-                              .toList(),
-                          onChanged: (v) =>
-                              setState(() => _selectedDistrict = v),
+                                  .map((d) => DropdownMenuItem(
+                                        value: d,
+                                        child: Text(d, style: const TextStyle(fontSize: 12)),
+                                      ))
+                                  .toList(),
+                          onChanged: (v) => setState(() => _selectedDistrict = v),
                         ),
                       ],
                     ),
@@ -353,20 +264,13 @@ class _SignUpPageState extends State<SignUpPage> {
               TextFormField(
                 controller: _passwordController,
                 obscureText: !_isPasswordVisible,
-                validator: (v) =>
-                v!.length < 6 ? "Password must be 6+ chars" : null,
+                validator: (v) => v!.length < 6 ? "Password must be 6+ chars" : null,
                 decoration: CommonUI.modernInputStyle(
                   hintText: "Create a strong password",
                   prefixIcon: Icons.lock_outline,
                   suffixIcon: IconButton(
-                    icon: Icon(
-                      _isPasswordVisible
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                    ),
-                    onPressed: () => setState(
-                          () => _isPasswordVisible = !_isPasswordVisible,
-                    ),
+                    icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                   ),
                 ),
               ),
@@ -380,20 +284,14 @@ class _SignUpPageState extends State<SignUpPage> {
                   onPressed: _isLoading ? null : _handleSignUp,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1E88E5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
-                    "Sign Up",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
+                          "Sign Up",
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
                 ),
               ),
               const SizedBox(height: 40),
