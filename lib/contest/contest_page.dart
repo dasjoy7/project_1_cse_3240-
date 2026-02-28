@@ -19,7 +19,6 @@ class _ContestPageState extends State<ContestPage> {
   List<Map<String, dynamic>> upcomingContests = [];
   List<Map<String, dynamic>> completedContests = [];
 
-  // contestId -> registered?
   Map<String, bool> registrationStatus = {};
 
   bool isLoading = true;
@@ -58,7 +57,6 @@ class _ContestPageState extends State<ContestPage> {
 
       final response = await supabase.from('contests').select('*');
 
-      // Fetch user's registrations
       final regs = await supabase
           .from('contest_registrations')
           .select('contest_id')
@@ -108,19 +106,16 @@ class _ContestPageState extends State<ContestPage> {
     }
   }
 
-  // Register in contest_registrations table
   Future<void> _registerForContest(String contestId) async {
     final currentUser = supabase.auth.currentUser;
     if (currentUser == null) return;
 
     try {
-      // Insert into contest_registrations
       await supabase.from('contest_registrations').upsert({
         'user_id': currentUser.id,
         'contest_id': int.parse(contestId),
       }, onConflict: 'user_id,contest_id');
 
-      // Also register in contest_question_submission if not already there
       final existing = await supabase
           .from('contest_question_submission')
           .select('id')
@@ -145,10 +140,12 @@ class _ContestPageState extends State<ContestPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registered successfully!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: const Text('Registered successfully!'),
+            backgroundColor: const Color(0xFF3DAA6E),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -156,13 +153,17 @@ class _ContestPageState extends State<ContestPage> {
       print('Error registering: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Registration failed: $e')),
+          SnackBar(
+            content: Text('Registration failed: $e'),
+            backgroundColor: const Color(0xFFE05555),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
         );
       }
     }
   }
 
-  // Called when tapping a contest card to navigate
   Future<void> _registerUserForContest(String contestId) async {
     final currentUser = supabase.auth.currentUser;
     if (currentUser == null) return;
@@ -194,22 +195,90 @@ class _ContestPageState extends State<ContestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF7F9FC),
       body: DefaultTabController(
         length: 2,
         child: Column(
           children: [
-            const Padding(
-              padding: EdgeInsets.only(top: 10.0),
-              child: TabBar(
-                tabs: [
-                  Tab(text: 'Upcoming'),
-                  Tab(text: 'Completed'),
+            // ── Themed Tab Bar ────────────────────────────────────────────
+            Container(
+              color: Colors.white,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                    child: Container(
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF7F9FC),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFEAEFF6)),
+                      ),
+                      child: TabBar(
+                        indicator: BoxDecoration(
+                          color: const Color(0xFF4A90D9),
+                          borderRadius: BorderRadius.circular(11),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF4A90D9).withOpacity(0.25),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        labelColor: Colors.white,
+                        unselectedLabelColor: const Color(0xFF8FA0B4),
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
+                        ),
+                        padding: const EdgeInsets.all(3),
+                        tabs: const [
+                          Tab(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.upcoming_outlined, size: 15),
+                                SizedBox(width: 6),
+                                Text('Upcoming'),
+                              ],
+                            ),
+                          ),
+                          Tab(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.check_circle_outline_rounded, size: 15),
+                                SizedBox(width: 6),
+                                Text('Completed'),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(height: 1, color: const Color(0xFFEAEFF6)),
                 ],
               ),
             ),
+
+            // ── Tab Content ───────────────────────────────────────────────
             Expanded(
               child: isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF4A90D9),
+                        strokeWidth: 2.5,
+                      ),
+                    )
                   : TabBarView(
                       children: [
                         _UpcomingTab(
@@ -250,9 +319,33 @@ class _UpcomingTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (contests.isEmpty) {
-      return const Center(
-        child: Text('No upcoming contests',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4A90D9).withOpacity(0.07),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                Icons.upcoming_outlined,
+                size: 48,
+                color: const Color(0xFF4A90D9).withOpacity(0.5),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No upcoming contests',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF5A6A7E),
+              ),
+            ),
+          ],
+        ),
       );
     }
 
@@ -282,7 +375,12 @@ class _UpcomingTab extends StatelessWidget {
           onTap: () async {
             if (!isRunning && !isCompleted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Contest has not started yet.')),
+                SnackBar(
+                  content: const Text('Contest has not started yet.'),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
               );
               return;
             }
@@ -328,9 +426,33 @@ class _CompletedTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (contests.isEmpty) {
-      return const Center(
-        child: Text('No completed contests',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF3DAA6E).withOpacity(0.07),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                Icons.check_circle_outline_rounded,
+                size: 48,
+                color: const Color(0xFF3DAA6E).withOpacity(0.5),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No completed contests',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF5A6A7E),
+              ),
+            ),
+          ],
+        ),
       );
     }
 

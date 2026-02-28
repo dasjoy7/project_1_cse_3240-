@@ -9,17 +9,18 @@ import 'package:project_1_cse_3240/problem/problem_page.dart';
 import 'package:project_1_cse_3240/profile/profile_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'friends/find_friends_page.dart';
+import 'user_guide_page.dart';
 
 // ── Color palette ──────────────────────────────────────────────────────────────
 // Soft sky blue primary instead of harsh #1E88E5
 const kPrimary     = Color(0xFF4A90D9);   // calm sky blue
 const kPrimaryDeep = Color(0xFF3574C4);   // slightly deeper for gradients
-const kSurface     = Color(0xFFF7F9FC);   // near-white background
+const kSurface     = Color(0xFFF7F9FC);  
 const kCardWhite   = Color(0xFFFFFFFF);
 const kTextDark    = Color(0xFF1E2A3B);
 const kTextMid     = Color(0xFF5A6A7E);
 const kTextLight   = Color(0xFF8FA0B4);
-// ───────────────────────────────────────────────────────────────────────────────
+
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -142,7 +143,7 @@ class _MainWrapperState extends State<MainWrapper> {
             ),
             const SizedBox(width: 8),
             const Text(
-              "Math Arena",
+              "Mathletics",
               style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 19,
@@ -253,6 +254,19 @@ class _MainWrapperState extends State<MainWrapper> {
                     icon: Icons.info_outline_rounded,
                     label: "About Arena",
                     onTap: () => Navigator.pop(context),
+                  ),
+                  _drawerItem(
+                    icon: Icons.menu_book_outlined,
+                    label: "User Guide",
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const UserGuidePage(),
+                        ),
+                      );
+                    },
                   ),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
