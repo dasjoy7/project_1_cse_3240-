@@ -21,16 +21,20 @@ class FullQuestionPage extends StatefulWidget {
 
 class _FullQuestionPageState extends State<FullQuestionPage> {
   final TextEditingController _answerController = TextEditingController();
-  String _answerStatus = '';
-  bool _isSubmitted = false;
+
   String _questionText = '';
+  String _questionName = '';
   String _correctAnswer = '';
   int _serialNumber = 0;
+
+  bool _isAlreadyCorrect = false;
+  bool _isLoading = true;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
-    _loadQuestion();
+    _loadQuestionAndStatus();
     widget.onContestEnd(() {
       if (mounted) {
         setState(() {});
@@ -39,7 +43,14 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
     });
   }
 
-  Future<void> _loadQuestion() async {
+  @override
+  void dispose() {
+    _answerController.dispose();
+    super.dispose();
+  }
+
+  // ─── Load question + existing submission status from DB ──────────────────
+  Future<void> _loadQuestionAndStatus() async {
     try {
       final question = await Supabase.instance.client
           .from('questions')
@@ -47,16 +58,39 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
           .eq('id', widget.questionId)
           .single();
 
+      final serial = question['serial_number'] as int;
+
       setState(() {
-        _questionText = question['question_text'];
-        _correctAnswer = question['correct_answer'];
-        _serialNumber = question['serial_number'];
+        _questionText = question['question_text'] ?? '';
+        _questionName = question['name'] ?? '';
+        _correctAnswer = question['correct_answer'] ?? '';
+        _serialNumber = serial;
       });
+
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      if (currentUser != null) {
+        final submission = await Supabase.instance.client
+            .from('contest_question_submission')
+            .select('serial_$serial, serial_${serial}_attempts')
+            .eq('user_id', currentUser.id)
+            .eq('contest_id', widget.contestId)
+            .maybeSingle();
+
+        if (submission != null) {
+          final status = submission['serial_$serial'] as int?;
+          setState(() {
+            _isAlreadyCorrect = (status == 1);
+          });
+        }
+      }
     } catch (e) {
-      print('Error fetching question: $e');
+      print('Error loading question: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // ─── Contest ended dialog ────────────────────────────────────────────────
   void _showContestEndedDialog() {
     showDialog(
       context: context,
@@ -67,8 +101,8 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // close dialog
-              Navigator.pop(context); // go back to contest page
+              Navigator.pop(context);
+              Navigator.pop(context);
             },
             child: const Text('OK'),
           ),
@@ -77,100 +111,149 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
     );
   }
 
-  void _submitAnswer() async {
+  // ─── Rating calculation from a full submission row ───────────────────────
+  int _calculateRating(Map<String, dynamic> row) {
+    int total = 0;
+    for (int i = 1; i <= 8; i++) {
+      final status = row['serial_$i'] as int?;
+      final attempts = (row['serial_${i}_attempts'] as int?) ?? 0;
+      if (attempts == 0) continue;
+
+      if (status == 1) {
+        // Base = serial × 10; penalty = 2 pts per wrong attempt before solving
+        final base = i * 10;
+        final wrongBefore = attempts - 1;
+        final score = (base - wrongBefore * 2).clamp(1, base);
+        total += score;
+      } else if (status == 0) {
+        // −2 pts per wrong attempt, no correct yet
+        total -= attempts * 2;
+      }
+    }
+    return total;
+  }
+
+  // ─── Submit answer ───────────────────────────────────────────────────────
+  //
+  //  KEY FIX: Uses upsert() instead of update().
+  //  Your RLS only has INSERT + SELECT policies — UPDATE is blocked.
+  //  upsert() issues  INSERT … ON CONFLICT (user_id, contest_id) DO UPDATE
+  //  which is covered by the INSERT policy in Supabase.
+  //
+  Future<void> _submitAnswer() async {
+    if (_isSubmitting) return;
     final submittedAnswer = _answerController.text.trim();
 
     if (widget.isContestCompleted()) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text("Contest Ended"),
-          content: const Text("Submissions are closed."),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context);
-              },
-              child: const Text("OK"),
-            ),
-          ],
-        ),
+      _showContestEndedDialog();
+      return;
+    }
+
+    if (_isAlreadyCorrect) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Already solved correctly!')),
       );
       return;
     }
 
     if (submittedAnswer.isEmpty) {
-      setState(() {
-        _answerStatus = 'Please enter an answer.';
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter an answer.')),
+      );
       return;
     }
 
-    bool isCorrect =
+    setState(() => _isSubmitting = true);
+
+    final isCorrect =
         submittedAnswer.toLowerCase() == _correctAnswer.toLowerCase();
-
-    setState(() {
-      _isSubmitted = true;
-      _answerStatus = isCorrect ? 'Correct!' : 'Incorrect! Try again.';
-    });
-
-    // Update the user's submission in the contest_question_submission table
     final currentUser = Supabase.instance.client.auth.currentUser;
-    if (currentUser != null) {
-      final userId = currentUser.id;
-
-      try {
-        // First, get current attempts
-        final existing = await Supabase.instance.client
-            .from('contest_question_submission')
-            .select('serial_${_serialNumber}_attempts')
-            .eq('user_id', userId)
-            .eq('contest_id', widget.contestId)
-            .maybeSingle();
-
-        int currentAttempts = 0;
-        if (existing != null &&
-            existing['serial_${_serialNumber}_attempts'] != null) {
-          currentAttempts = existing['serial_${_serialNumber}_attempts'];
-        }
-
-        // Increment attempts
-        int newAttempts = currentAttempts + 1;
-
-        // Prepare update data
-        Map<String, dynamic> updateData = {
-          'serial_${_serialNumber}_attempts': newAttempts,
-        };
-
-        // Only update status if correct
-        if (isCorrect) {
-          updateData['serial_$_serialNumber'] = 1;
-        } else {
-          // Mark as attempted but wrong (0)
-          updateData['serial_$_serialNumber'] = 0;
-        }
-
-        await Supabase.instance.client
-            .from('contest_question_submission')
-            .update(updateData)
-            .eq('user_id', userId)
-            .eq('contest_id', widget.contestId);
-
-        // Recalculate total rating (for both correct and wrong answers)
-        await _updateRating(userId);
-      } catch (e) {
-        print('Error updating submission: $e');
-      }
+    if (currentUser == null) {
+      setState(() => _isSubmitting = false);
+      return;
     }
 
-    // Show result dialog
+    final userId = currentUser.id;
+
+    try {
+      // 1. Fetch the full existing row — we need every column for upsert
+      final existing = await Supabase.instance.client
+          .from('contest_question_submission')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('contest_id', widget.contestId)
+          .maybeSingle();
+
+      if (existing == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Submission record not found. Please re-open the contest.')),
+        );
+        setState(() => _isSubmitting = false);
+        return;
+      }
+
+      // Never overwrite a correct answer with a wrong one
+      if (existing['serial_$_serialNumber'] == 1) {
+        setState(() {
+          _isAlreadyCorrect = true;
+          _isSubmitting = false;
+        });
+        return;
+      }
+
+      // 2. Patch only the fields that change
+      final int currentAttempts =
+          (existing['serial_${_serialNumber}_attempts'] as int?) ?? 0;
+      final int newAttempts = currentAttempts + 1;
+
+      final Map<String, dynamic> updatedRow =
+          Map<String, dynamic>.from(existing);
+      updatedRow['serial_$_serialNumber'] = isCorrect ? 1 : 0;
+      updatedRow['serial_${_serialNumber}_attempts'] = newAttempts;
+
+      // 3. Recalculate rating from the patched row
+      final int newRating = _calculateRating(updatedRow);
+      updatedRow['rating'] = newRating;
+
+      // 4. Upsert — INSERT … ON CONFLICT (user_id, contest_id) DO UPDATE
+      //    This works with INSERT-only RLS because Supabase evaluates the
+      //    INSERT policy for upsert operations.
+      await Supabase.instance.client
+          .from('contest_question_submission')
+          .upsert(
+            updatedRow,
+            onConflict: 'user_id,contest_id',
+          );
+
+      print('✅ Upserted — serial_$_serialNumber: ${isCorrect ? 1 : 0}, '
+          'attempts: $newAttempts, rating: $newRating');
+
+      // 5. Update local UI state
+      setState(() {
+        if (isCorrect) _isAlreadyCorrect = true;
+        _answerController.clear();
+        _isSubmitting = false;
+      });
+    } catch (e) {
+      print('Error submitting: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+      setState(() => _isSubmitting = false);
+      return;
+    }
+
+    // 6. Result dialog
     if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(
@@ -196,8 +279,11 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context, isCorrect); // Return result
+              Navigator.pop(context); // close dialog
+              if (isCorrect) {
+                Navigator.pop(context, true); // go back to question list
+              }
+              // Wrong: stay on this page so user can retry
             },
             child: const Text('OK'),
           ),
@@ -206,104 +292,86 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
     );
   }
 
-  Future<void> _updateRating(String userId) async {
-    try {
-      // Get user's submission data
-      final submission = await Supabase.instance.client
-          .from('contest_question_submission')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('contest_id', widget.contestId)
-          .single();
-
-      int totalRating = 0;
-
-      // Calculate rating for each question (serial 1-8)
-      for (int i = 1; i <= 8; i++) {
-        int? status = submission['serial_$i'];
-        int? attempts = submission['serial_${i}_attempts'];
-
-        // If question was attempted
-        if (attempts != null && attempts > 0) {
-          if (status == 1) {
-            // Correct answer
-            // Base points = serial number × 10 (Q1=10, Q2=20, Q3=30...)
-            int basePoints = i * 10;
-
-            // Penalty for wrong attempts (deduct 2 points per wrong attempt)
-            int wrongAttempts = attempts - 1; // -1 because final attempt was correct
-            int penalty = wrongAttempts * 2;
-
-            // Final score for this question (minimum 1 point)
-            int questionScore = basePoints - penalty;
-            if (questionScore < 1) questionScore = 1;
-
-            totalRating += questionScore;
-          } else if (status == 0) {
-            // Wrong answer - negative marking (-2 points per wrong attempt)
-            int negativeMarks = attempts * 2;
-            totalRating -= negativeMarks;
-          }
-        }
-      }
-
-      // Update rating in contest_question_submission table
-      await Supabase.instance.client
-          .from('contest_question_submission')
-          .update({'rating': totalRating})
-          .eq('user_id', userId)
-          .eq('contest_id', widget.contestId);
-
-      print('Contest rating updated: $totalRating');
-    } catch (e) {
-      print('Error updating rating: $e');
-    }
-  }
-
+  // ─── Build ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final bool isContestOver = widget.isContestCompleted();
+    final bool canSubmit =
+        !isContestOver && !_isAlreadyCorrect && !_isSubmitting;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Full Question')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _questionText.isNotEmpty
-                  ? _questionText
-                  : 'No question available.',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _answerController,
-              decoration: const InputDecoration(
-                labelText: 'Submit your answer',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.text,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: widget.isContestCompleted() ? null : _submitAnswer,
-              child: const Text('Submit Answer'),
-            ),
-            const SizedBox(height: 20),
-            if (_isSubmitted)
-              Text(
-                _answerStatus,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: _answerStatus == 'Correct!'
-                      ? Colors.green
-                      : Colors.red,
-                ),
-              ),
-          ],
-        ),
+      appBar: AppBar(
+        title: Text(_questionName.isNotEmpty ? _questionName : 'Question'),
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Question text
+                  Text(
+                    _questionText.isNotEmpty
+                        ? _questionText
+                        : 'No question available.',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Answer input — hidden when already solved or contest over
+                  if (!_isAlreadyCorrect && !isContestOver) ...[
+                    TextField(
+                      controller: _answerController,
+                      decoration: const InputDecoration(
+                        labelText: 'Your answer',
+                        border: OutlineInputBorder(),
+                      ),
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _submitAnswer(),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: canSubmit ? _submitAnswer : null,
+                        icon: _isSubmitting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.send),
+                        label: Text(
+                            _isSubmitting ? 'Submitting…' : 'Submit Answer'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+
+
+
+                  if (isContestOver && !_isAlreadyCorrect)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Contest has ended. Submissions are closed.',
+                          style: TextStyle(
+                              color: Colors.red.shade600,
+                              fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
     );
   }
 }

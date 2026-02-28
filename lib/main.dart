@@ -8,9 +8,11 @@ void main() async {
 
   await Supabase.initialize(
     url: 'https://nhwgurshhxvgwauexdlw.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5od2d1cnNoaHh2Z3dhdWV4ZGx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1OTYzMDQsImV4cCI6MjA4MjE3MjMwNH0.LlcfKbZgN2v5r9zZdmyBdT7aVYsCdLHK0GOomQllemw',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5od2d1cnNoaHh2Z3dhdWV4ZGx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1OTYzMDQsImV4cCI6MjA4MjE3MjMwNH0.LlcfKbZgN2v5r9zZdmyBdT7aVYsCdLHK0GOomQllemw',
   );
-  runApp(MyApp());
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
@@ -29,7 +31,6 @@ class _MyAppState extends State<MyApp> {
     _checkSession();
   }
 
-  // Check if user is logged in
   Future<void> _checkSession() async {
     final session = Supabase.instance.client.auth.currentSession;
     setState(() {
@@ -41,7 +42,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: _isLoggedIn ? MainWrapper() : SplashScreen(),
+      home: _isLoggedIn ? const MainWrapper() : const SplashScreen(),
     );
   }
 }

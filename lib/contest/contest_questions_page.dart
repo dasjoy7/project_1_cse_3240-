@@ -32,15 +32,29 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
 
   bool _isContestStarted = false;
   bool _isContestCompleted = false;
-  bool _hasUpdatedProfileRatings = false; // ← Add this flag
+  bool _hasUpdatedProfileRatings = false;
+  int _participantCount = 0;
 
-  List<VoidCallback> _onContestEndCallbacks = [];
+  final List<VoidCallback> _onContestEndCallbacks = [];
 
   @override
   void initState() {
     super.initState();
     _loadQuestions();
+    _loadParticipantCount();
     _startCountdown();
+  }
+
+  Future<void> _loadParticipantCount() async {
+    try {
+      final result = await Supabase.instance.client
+          .from('contest_registrations')
+          .select('id')
+          .eq('contest_id', widget.contestId);
+      if (mounted) setState(() => _participantCount = (result as List).length);
+    } catch (e) {
+      print('Error loading participant count: $e');
+    }
   }
 
   Future<void> _loadQuestions() async {
@@ -48,7 +62,8 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
       final response = await Supabase.instance.client
           .from('questions')
           .select('*')
-          .eq('contest_id', widget.contestId);
+          .eq('contest_id', widget.contestId)
+          .order('serial_number', ascending: true);
 
       setState(() {
         questions = List<Map<String, dynamic>>.from(response);
@@ -75,12 +90,10 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
           .eq('contest_id', widget.contestId)
           .maybeSingle();
 
-      if (response == null) return;
-
       setState(() {
         for (var question in questions) {
           final serial = question['serial_number'];
-          final value = response['serial_$serial'];
+          final value = response?['serial_$serial'];
           final questionId = question['id'].toString();
 
           if (value == 1) {
@@ -98,28 +111,28 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
   }
 
   void _startCountdown() {
-    _remainingTime = widget.contestStartTime.difference(DateTime.now());
+    _remainingTime = widget.contestEndTime.difference(DateTime.now());
 
     if (_remainingTime.isNegative) {
-      setState(() {
-        _remainingTime = Duration(seconds: 0);
-        _isContestStarted = true;
-      });
+      _remainingTime = Duration.zero;
+      _isContestStarted = true;
+      _isContestCompleted = true;
+      return;
     }
 
-    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-      setState(() {
-        _updateRemainingTime();
-      });
+    if (DateTime.now().isAfter(widget.contestStartTime)) {
+      _isContestStarted = true;
+    }
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      setState(() => _updateRemainingTime());
 
       if (_remainingTime.inSeconds <= 0) {
         _timer.cancel();
-        setState(() {
-          _isContestCompleted = true;
-        });
+        setState(() => _isContestCompleted = true);
         _notifyContestEnd();
 
-        // Only update profile ratings once
         if (!_hasUpdatedProfileRatings) {
           _hasUpdatedProfileRatings = true;
           _updateProfileRatings();
@@ -129,45 +142,33 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
   }
 
   void _updateRemainingTime() {
-    DateTime now = DateTime.now();
+    final now = DateTime.now();
     if (now.isAfter(widget.contestStartTime) && !_isContestStarted) {
       _isContestStarted = true;
     }
-
     _remainingTime = widget.contestEndTime.difference(now);
-
     if (_remainingTime.isNegative) {
-      _remainingTime = Duration(seconds: 0);
+      _remainingTime = Duration.zero;
       _isContestCompleted = true;
     }
   }
 
   void _notifyContestEnd() {
-    for (var cb in _onContestEndCallbacks) {
-      cb();
-    }
+    for (var cb in _onContestEndCallbacks) cb();
     _onContestEndCallbacks.clear();
   }
 
   Future<void> _updateProfileRatings() async {
-    print('=== Starting profile rating update ===');
     try {
-      // Get all submissions for this contest
       final submissions = await Supabase.instance.client
           .from('contest_question_submission')
           .select('user_id, rating')
           .eq('contest_id', widget.contestId);
 
-      print('Found ${submissions.length} submissions to update');
-
-      // Update each user's profile rating
       for (var submission in submissions) {
         final userId = submission['user_id'];
         final contestRating = (submission['rating'] as num?)?.toInt() ?? 0;
 
-        print('Processing user $userId with contest rating: $contestRating');
-
-        // Get current profile rating
         final profile = await Supabase.instance.client
             .from('profile')
             .select('rating')
@@ -175,20 +176,14 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
             .single();
 
         int currentRating = (profile['rating'] as num?)?.toInt() ?? 0;
+        // contestRating may be negative — correctly subtracts when < 0
         int newRating = currentRating + contestRating;
 
-        print('User $userId: Current=$currentRating, Contest=$contestRating, New=$newRating');
-
-        // Update profile
         await Supabase.instance.client
             .from('profile')
             .update({'rating': newRating})
             .eq('id', userId);
-
-        print('Updated user $userId profile rating to $newRating');
       }
-
-      print('=== All profile ratings updated successfully ===');
     } catch (e) {
       print('Error updating profile ratings: $e');
     }
@@ -196,7 +191,9 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
 
   @override
   void dispose() {
-    _timer.cancel();
+    if (!_isContestCompleted || _remainingTime.inSeconds > 0) {
+      _timer.cancel();
+    }
     super.dispose();
   }
 
@@ -204,7 +201,21 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
     int hours = duration.inHours;
     int minutes = duration.inMinutes % 60;
     int seconds = duration.inSeconds % 60;
-    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    return '${hours.toString().padLeft(2, '0')}:'
+        '${minutes.toString().padLeft(2, '0')}:'
+        '${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Color get _timerBgColor =>
+      _remainingTime.inMinutes < 5 ? Colors.red.shade50 : Colors.blue.shade50;
+
+  Color get _timerFgColor =>
+      _remainingTime.inMinutes < 5 ? Colors.red : Colors.blue;
+
+  Widget? _trailingIcon(bool? status) {
+    if (status == true) return const Icon(Icons.check_circle, color: Colors.green, size: 28);
+    if (status == false) return const Icon(Icons.cancel, color: Colors.red, size: 28);
+    return null;
   }
 
   @override
@@ -218,79 +229,105 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
           children: [
             Text(widget.contestSubtitle, style: const TextStyle(fontSize: 18)),
             const SizedBox(height: 20),
+
+            // ── Timer ──────────────────────────────────────────────────
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: _remainingTime.inMinutes < 5
-                    ? Colors.red.shade50
-                    : Colors.blue.shade50,
-                border: Border.all(
-                  color: _remainingTime.inMinutes < 5
-                      ? Colors.red
-                      : Colors.blue,
-                  width: 2,
-                ),
+                color: _timerBgColor,
+                border: Border.all(color: _timerFgColor, width: 2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    _isContestStarted ? 'Time Remaining' : 'Starts In',
-                    style:
-                    TextStyle(fontSize: 16, color: Colors.grey.shade700),
+                    _isContestCompleted
+                        ? 'Contest Ended'
+                        : _isContestStarted
+                            ? 'Time Remaining'
+                            : 'Starts In',
+                    style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _formatTime(_remainingTime),
+                    _isContestCompleted ? '00:00:00' : _formatTime(_remainingTime),
                     style: TextStyle(
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
-                      color: _remainingTime.inMinutes < 5
-                          ? Colors.red
-                          : Colors.blue,
+                      color: _timerFgColor,
                       fontFamily: 'monospace',
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-            const Text(
-              'Questions:',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            const SizedBox(height: 12),
+
+            // ── Participants row ────────────────────────────────────────
+            Row(
+              children: [
+                Icon(Icons.people_outline, size: 16, color: Colors.grey.shade600),
+                const SizedBox(width: 4),
+                Text(
+                  '$_participantCount Registered',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
+
+            // ── Questions header ────────────────────────────────────────
+            const Text('Questions:',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
+
+            // ── Question list ────────────────────────────────────────
             Expanded(
               child: ListView.builder(
                 itemCount: questions.length,
                 itemBuilder: (context, index) {
                   final question = questions[index];
                   final questionName = question['name'] ?? 'No Name';
-                  final questionText = question['question_text'] ?? 'No Text';
                   final questionId = question['id'].toString();
+                  final serial = question['serial_number'] as int;
                   final status = answerStatus[questionId];
 
                   return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 10),
+                    margin: const EdgeInsets.symmetric(vertical: 6),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
+                      side: status == true
+                          ? const BorderSide(color: Colors.green, width: 1.5)
+                          : status == false
+                              ? const BorderSide(color: Colors.red, width: 1.5)
+                              : BorderSide.none,
                     ),
                     child: ListTile(
-                      title: Text(
-                        '${question['serial_number']}. $questionName',
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      leading: CircleAvatar(
+                        backgroundColor: status == true
+                            ? Colors.green.shade100
+                            : status == false
+                                ? Colors.red.shade100
+                                : Colors.grey.shade200,
+                        child: Text(
+                          '$serial',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: status == true
+                                ? Colors.green.shade800
+                                : status == false
+                                    ? Colors.red.shade800
+                                    : Colors.grey.shade700,
+                          ),
+                        ),
                       ),
-                      subtitle: Text(questionText),
-                      trailing: status == true
-                          ? const Icon(Icons.check_circle,
-                          color: Colors.green, size: 28)
-                          : status == false
-                          ? const Icon(Icons.cancel,
-                          color: Colors.red, size: 28)
-                          : null,
+                      title: Text(questionName),
+                      trailing: _trailingIcon(status),
                       onTap: () async {
-                        final result = await Navigator.push(
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => FullQuestionPage(
@@ -301,12 +338,7 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
                             ),
                           ),
                         );
-
-                        if (result != null) {
-                          setState(() {
-                            answerStatus[questionId] = result as bool;
-                          });
-                        }
+                        if (mounted) await _loadAnswerStatus();
                       },
                     ),
                   );
@@ -315,6 +347,31 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryChip({
+    required IconData icon,
+    required Color color,
+    required int count,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text('$count $label',
+              style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }

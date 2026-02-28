@@ -10,6 +10,17 @@ import 'package:project_1_cse_3240/profile/profile_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'friends/find_friends_page.dart';
 
+// ── Color palette ──────────────────────────────────────────────────────────────
+// Soft sky blue primary instead of harsh #1E88E5
+const kPrimary     = Color(0xFF4A90D9);   // calm sky blue
+const kPrimaryDeep = Color(0xFF3574C4);   // slightly deeper for gradients
+const kSurface     = Color(0xFFF7F9FC);   // near-white background
+const kCardWhite   = Color(0xFFFFFFFF);
+const kTextDark    = Color(0xFF1E2A3B);
+const kTextMid     = Color(0xFF5A6A7E);
+const kTextLight   = Color(0xFF8FA0B4);
+// ───────────────────────────────────────────────────────────────────────────────
+
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
 
@@ -27,7 +38,7 @@ class _MainWrapperState extends State<MainWrapper> {
     const ProblemPage(),
     const LeaderboardPage(),
     const ContestPage(),
-    const BlogPage()
+    const BlogPage(),
   ];
 
   late PageController _pageController;
@@ -62,23 +73,40 @@ class _MainWrapperState extends State<MainWrapper> {
   }
 
   void _navigateToProfile() {
-    Navigator.pop(context); // close drawer
+    Navigator.pop(context);
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => Scaffold(
-          backgroundColor: const Color(0xFFF4F6FB),
-          appBar: AppBar(
-            backgroundColor: const Color(0xFF1E88E5),
-            foregroundColor: Colors.white,
-            centerTitle: true,
-            title: const Text(
-              "My Profile",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            leading: const BackButton(),
-          ),
+          backgroundColor: kSurface,
+          appBar: _buildAppBar("My Profile"),
           body: const ProfilePage(),
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(String title) {
+    return AppBar(
+      backgroundColor: kCardWhite,
+      foregroundColor: kTextDark,
+      elevation: 0,
+      centerTitle: true,
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+          color: kTextDark,
+          letterSpacing: 0.2,
+        ),
+      ),
+      leading: const BackButton(color: kTextDark),
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(
+          height: 1,
+          color: const Color(0xFFEAEFF6),
         ),
       ),
     );
@@ -87,64 +115,128 @@ class _MainWrapperState extends State<MainWrapper> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: kSurface,
+
+      // ── AppBar ────────────────────────────────────────────────────────────────
       appBar: AppBar(
-        title: const Text("Math Arena"),
-        backgroundColor: const Color(0xFF1E88E5),
-        foregroundColor: Colors.white,
+        backgroundColor: kCardWhite,
+        foregroundColor: kTextDark,
+        elevation: 0,
         centerTitle: true,
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // ── Clickable Drawer Header → Profile ──
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [kPrimary, kPrimaryDeep],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.functions_rounded,
+                  color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              "Math Arena",
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 19,
+                color: kTextDark,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: const Color(0xFFEAEFF6)),
+        ),
+        iconTheme: const IconThemeData(color: kTextDark),
+      ),
+
+      // ── Drawer ────────────────────────────────────────────────────────────────
+      drawer: Drawer(
+        backgroundColor: kCardWhite,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            topRight: Radius.circular(24),
+            bottomRight: Radius.circular(24),
+          ),
+        ),
+        child: Column(
+          children: [
+            // Header
             InkWell(
               onTap: _navigateToProfile,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
-                decoration: const BoxDecoration(color: Color(0xFF1E88E5)),
+                padding: const EdgeInsets.fromLTRB(20, 52, 20, 24),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [kPrimary, kPrimaryDeep],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topRight: Radius.circular(24),
+                  ),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const CircleAvatar(
-                      backgroundColor: Colors.white,
-                      radius: 30,
-                      child: Icon(
-                        Icons.person,
-                        color: Color(0xFF1E88E5),
-                        size: 35,
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.25),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                            color: Colors.white.withOpacity(0.4), width: 1.5),
                       ),
+                      child: const Icon(Icons.person_rounded,
+                          color: Colors.white, size: 30),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     Text(
                       _fullName.isNotEmpty ? _fullName : 'Loading...',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.1,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (_username.isNotEmpty)
+                    if (_username.isNotEmpty) ...[
+                      const SizedBox(height: 2),
                       Text(
                         '@$_username',
-                        style: const TextStyle(
-                          color: Colors.white70,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.75),
                           fontSize: 12,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
-                    const SizedBox(height: 6),
-                    const Row(
+                    ],
+                    const SizedBox(height: 8),
+                    Row(
                       children: [
                         Text(
                           "View Profile",
-                          style: TextStyle(color: Colors.white60, fontSize: 11),
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.65),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                        SizedBox(width: 4),
-                        Icon(Icons.arrow_forward_ios,
-                            color: Colors.white60, size: 10),
+                        const SizedBox(width: 3),
+                        Icon(Icons.arrow_forward_ios_rounded,
+                            color: Colors.white.withOpacity(0.65), size: 10),
                       ],
                     ),
                   ],
@@ -152,138 +244,226 @@ class _MainWrapperState extends State<MainWrapper> {
               ),
             ),
 
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text("About Arena"),
-              onTap: () => Navigator.pop(context),
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.people_outline),
-              title: const Text("Friends"),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const FindFriendsPage(),
+            // Menu items
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                children: [
+                  _drawerItem(
+                    icon: Icons.info_outline_rounded,
+                    label: "About Arena",
+                    onTap: () => Navigator.pop(context),
                   ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.smart_toy_outlined),
-              title: const Text("AI Tutor"),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AskAIPage(),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                    child: Divider(color: Color(0xFFEAEFF6), height: 1),
                   ),
-                );
-              },
+                  _drawerItem(
+                    icon: Icons.people_outline_rounded,
+                    label: "Friends",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const FindFriendsPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  _drawerItem(
+                    icon: Icons.smart_toy_outlined,
+                    label: "AI Tutor",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AskAIPage(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text("Logout", style: TextStyle(color: Colors.red)),
-              onTap: () async {
-                bool confirm = await showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text("Logout"),
-                        content: const Text("Are you sure you want to exit?"),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text("Cancel"),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text(
-                              "Logout",
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ) ??
-                    false;
 
-                if (confirm) {
-                  await Supabase.instance.client.auth.signOut();
-                  if (mounted) {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const LoginPage()),
-                      (route) => false,
-                    );
+            // Logout at bottom
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+              child: ListTile(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                tileColor: const Color(0xFFFFF0F0),
+                leading: const Icon(Icons.logout_rounded,
+                    color: Color(0xFFE05555), size: 20),
+                title: const Text(
+                  "Logout",
+                  style: TextStyle(
+                    color: Color(0xFFE05555),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                onTap: () async {
+                  bool confirm = await showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20)),
+                          title: const Text("Logout",
+                              style:
+                                  TextStyle(fontWeight: FontWeight.w700)),
+                          content:
+                              const Text("Are you sure you want to exit?"),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(context, false),
+                              child: Text("Cancel",
+                                  style: TextStyle(color: kTextMid)),
+                            ),
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(context, true),
+                              child: const Text(
+                                "Logout",
+                                style:
+                                    TextStyle(color: Color(0xFFE05555)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ) ??
+                      false;
+
+                  if (confirm) {
+                    await Supabase.instance.client.auth.signOut();
+                    if (mounted) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const LoginPage()),
+                        (route) => false,
+                      );
+                    }
                   }
-                }
-              },
+                },
+              ),
             ),
           ],
         ),
       ),
+
+      // ── Body ─────────────────────────────────────────────────────────────────
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) => setState(() => _selectedIndex = index),
         children: _screens,
       ),
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
-          child: BottomNavigationBar(
-            currentIndex: _selectedIndex,
-            onTap: (index) {
-              setState(() => _selectedIndex = index);
-              _pageController.jumpToPage(index);
-            },
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white,
-            selectedItemColor: const Color(0xFF1E88E5),
-            unselectedItemColor: Colors.grey.shade400,
-            showSelectedLabels: true,
-            showUnselectedLabels: false,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home),
-                label: "Home",
+
+      // ── Bottom Navigation Bar ─────────────────────────────────────────────────
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: kCardWhite,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF4A90D9).withOpacity(0.08),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.assignment_outlined),
-                activeIcon: Icon(Icons.assignment),
-                label: "Problems",
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.leaderboard_outlined),
-                activeIcon: Icon(Icons.leaderboard),
-                label: "Rank",
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.emoji_events_outlined),
-                activeIcon: Icon(Icons.emoji_events),
-                label: "Contest",
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.book_outlined),
-                activeIcon: Icon(Icons.book),
-                label: "Blog",
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: (index) {
+                setState(() => _selectedIndex = index);
+                _pageController.jumpToPage(index);
+              },
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: kCardWhite,
+              selectedItemColor: kPrimary,
+              unselectedItemColor: kTextLight,
+              showSelectedLabels: true,
+              showUnselectedLabels: false,
+              selectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
+              ),
+              elevation: 0,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined),
+                  activeIcon: Icon(Icons.home_rounded),
+                  label: "Home",
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.assignment_outlined),
+                  activeIcon: Icon(Icons.assignment_rounded),
+                  label: "Problems",
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.leaderboard_outlined),
+                  activeIcon: Icon(Icons.leaderboard_rounded),
+                  label: "Rank",
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.emoji_events_outlined),
+                  activeIcon: Icon(Icons.emoji_events_rounded),
+                  label: "Contest",
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.menu_book_outlined),
+                  activeIcon: Icon(Icons.menu_book_rounded),
+                  label: "Blog",
+                ),
+              ],
+            ),
+          ),
         ),
+      ),
+    );
+  }
+
+  // ── Helper: drawer list tile ──────────────────────────────────────────────
+  Widget _drawerItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: ListTile(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: kPrimary.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: kPrimary, size: 19),
+        ),
+        title: Text(
+          label,
+          style: const TextStyle(
+            color: kTextDark,
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded,
+            color: kTextLight, size: 18),
+        onTap: onTap,
       ),
     );
   }

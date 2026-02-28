@@ -99,9 +99,15 @@ class StreakInfo {
 
 // Static friends list (placeholder)
 class Friend {
+  final String id;
   final String username;
-  final int rating;
   final String category;
+  final int rating;
 
-  Friend({required this.username, required this.rating, required this.category});
+  const Friend({
+    required this.id,
+    required this.username,
+    required this.category,
+    required this.rating,
+  });
 }

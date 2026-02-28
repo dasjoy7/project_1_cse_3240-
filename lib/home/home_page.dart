@@ -18,6 +18,8 @@ class _HomePageState extends State<HomePage> {
   UserProfile? _profile;
   RankInfo? _ranks;
   StreakInfo? _streak;
+  List<Friend> _friends = [];
+  int _totalContests = 0;
   bool _loading = true;
   String? _error;
 
@@ -31,31 +33,33 @@ class _HomePageState extends State<HomePage> {
     setState(() { _loading = true; _error = null; });
     try {
       final profile = await HomeService.fetchProfile();
-      final ranks = await HomeService.fetchRanks(profile);
-      final streak = await HomeService.fetchStreak();
+      final results = await Future.wait([
+        HomeService.fetchRanks(profile),
+        HomeService.fetchStreak(),
+        HomeService.fetchFriends(),
+        HomeService.fetchTotalContests(),
+      ]);
+
       if (mounted) {
         setState(() {
-          _profile = profile;
-          _ranks = ranks;
-          _streak = streak;
-          _loading = false;
+          _profile       = profile;
+          _ranks         = results[0] as RankInfo;
+          _streak        = results[1] as StreakInfo?;
+          _friends       = results[2] as List<Friend>;
+          _totalContests = results[3] as int;
+          _loading       = false;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _loading = false;
-        });
+        setState(() { _error = e.toString(); _loading = false; });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    if (_loading) return const Center(child: CircularProgressIndicator());
 
     if (_error != null) {
       return Center(
@@ -78,7 +82,6 @@ class _HomePageState extends State<HomePage> {
 
     final profile = _profile!;
     final badges = HomeService.getBadges(profile.rating);
-    final friends = HomeService.getStaticFriends();
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -94,8 +97,8 @@ class _HomePageState extends State<HomePage> {
             PerformanceGraph(profile: profile),
             StatsSection(
               profile: profile,
-              friends: friends,
-              totalContests: 0,
+              friends: _friends,
+              totalContests: _totalContests,
             ),
             const SizedBox(height: 24),
           ],

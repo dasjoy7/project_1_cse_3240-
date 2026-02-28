@@ -21,7 +21,7 @@ class _RequestsPageState extends State<RequestsPage> {
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
         elevation: 0,
-        title: const Text("Friend Requests"),
+        title: Text("Friend Requests"),
         centerTitle: true,
       ),
       body: FutureBuilder(
@@ -32,13 +32,13 @@ class _RequestsPageState extends State<RequestsPage> {
             .eq('receiver_id', currentUser.id),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(child: CircularProgressIndicator());
           }
 
           final requests = snapshot.data as List;
 
           if (requests.isEmpty) {
-            return const Center(
+            return Center(
               child: Text(
                 "No Friend Requests",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
@@ -47,7 +47,7 @@ class _RequestsPageState extends State<RequestsPage> {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12),
             itemCount: requests.length,
             itemBuilder: (context, index) {
               final req = requests[index];
@@ -57,13 +57,13 @@ class _RequestsPageState extends State<RequestsPage> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15),
                 ),
-                margin: const EdgeInsets.symmetric(vertical: 8),
+                margin: EdgeInsets.symmetric(vertical: 8),
                 child: ListTile(
                   contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   title: Text(
                     "Requester ID: ${req['requester_id']}",
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style:TextStyle(fontWeight: FontWeight.w600),
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -71,18 +71,18 @@ class _RequestsPageState extends State<RequestsPage> {
                       CircleAvatar(
                         backgroundColor: Colors.green,
                         child: IconButton(
-                          icon: const Icon(Icons.check, color: Colors.white),
+                          icon: Icon(Icons.check, color: Colors.white),
                           onPressed: () async {
                             await _friendService.acceptRequest(req['id']);
                             setState(() {});
                           },
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       CircleAvatar(
                         backgroundColor: Colors.red,
                         child: IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white),
+                          icon:Icon(Icons.close, color: Colors.white),
                           onPressed: () async {
                             await _friendService.removeRequest(req['id']);
                             setState(() {});

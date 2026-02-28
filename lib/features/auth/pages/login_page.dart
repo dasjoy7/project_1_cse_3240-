@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:project_1_cse_3240/admin%20panel/admin_panel.dart';
 import 'package:project_1_cse_3240/main_wrapper.dart';
 import 'package:project_1_cse_3240/common_widgets.dart';
+import 'package:project_1_cse_3240/features/auth/pages/reset_password_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'signup_page.dart';
 
@@ -20,7 +21,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isObscured = true;
   bool _isLoading = false;
-  bool _isAdminMode = false; // <-- Tracks whether admin login is selected
+  bool _isAdminMode = false;
 
   @override
   void dispose() {
@@ -42,7 +43,6 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.user != null && mounted) {
         if (_isAdminMode) {
-          // Just check if the email exists in the admin table
           final adminCheck = await Supabase.instance.client
               .from('admin')
               .select('email')
@@ -88,6 +88,127 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  void _showForgotPasswordDialog() {
+    final prefilled = _emailController.text.trim();
+    final dialogEmailController = TextEditingController(text: prefilled);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        bool isSending = false;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                "Reset Password",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "Enter your email and we'll send you an 8-digit code to reset your password.",
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: dialogEmailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: CommonUI.modernInputStyle(
+                      hintText: "Enter your email",
+                      prefixIcon: Icons.email_outlined,
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Cancel",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: isSending
+                      ? null
+                      : () async {
+                          final email = dialogEmailController.text.trim();
+                          if (email.isEmpty || !email.contains('@')) {
+                            CommonUI.showSnackBar(
+                              context,
+                              "Please enter a valid email address.",
+                              isError: true,
+                            );
+                            return;
+                          }
+
+                          setDialogState(() => isSending = true);
+
+                          try {
+                            await Supabase.instance.client.auth
+                                .resetPasswordForEmail(email);
+
+                            if (context.mounted) {
+                              Navigator.pop(context); // close dialog
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      ResetPasswordPage(email: email),
+                                ),
+                              );
+                            }
+                          } on AuthException catch (e) {
+                            if (context.mounted) {
+                              CommonUI.showSnackBar(
+                                context,
+                                e.message,
+                                isError: true,
+                              );
+                            }
+                          } catch (_) {
+                            if (context.mounted) {
+                              CommonUI.showSnackBar(
+                                context,
+                                "An unexpected error occurred.",
+                                isError: true,
+                              );
+                            }
+                          } finally {
+                            setDialogState(() => isSending = false);
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: isSending
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text("Send Code"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,7 +234,6 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 const SizedBox(height: 50),
 
-                // ── Dynamic heading based on mode ──
                 Text(
                   _isAdminMode ? "Admin Portal" : "Welcome Back",
                   style: const TextStyle(
@@ -128,7 +248,6 @@ class _LoginPageState extends State<LoginPage> {
                   style: const TextStyle(color: Colors.grey),
                 ),
 
-                // ── Admin Mode Toggle Banner ──
                 if (_isAdminMode)
                   Container(
                     margin: const EdgeInsets.only(top: 16),
@@ -207,13 +326,11 @@ class _LoginPageState extends State<LoginPage> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {
-                      // Future: Implementation for password reset
-                    },
-                    child: const Text(
+                    onPressed: _isAdminMode ? null : _showForgotPasswordDialog,
+                    child: Text(
                       "Forgot Password?",
                       style: TextStyle(
-                        color: Colors.blue,
+                        color: _isAdminMode ? Colors.grey : Colors.blue,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -222,16 +339,14 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 20),
 
-                // ── Main Sign In Button ──
                 SizedBox(
                   width: double.infinity,
                   height: 55,
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _isAdminMode
-                          ? Colors.orange
-                          : Colors.blue,
+                      backgroundColor:
+                          _isAdminMode ? Colors.orange : Colors.blue,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15),
@@ -252,7 +367,6 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 16),
 
-                // ── Toggle: Sign in as Admin / Back to User ──
                 SizedBox(
                   width: double.infinity,
                   height: 55,

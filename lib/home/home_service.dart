@@ -18,17 +18,60 @@ class HomeService {
   }
 
   // ─────────────────────────────────────
+  // Total contests participated
+  // ─────────────────────────────────────
+  static Future<int> fetchTotalContests() async {
+    final rows = await _client
+        .from('contest_registrations')
+        .select('id')
+        .eq('user_id', _userId);
+    return (rows as List).length;
+  }
+
+  // ─────────────────────────────────────
+  // Friends
+  // ─────────────────────────────────────
+  static Future<List<Friend>> fetchFriends() async {
+    final client = Supabase.instance.client;
+    final currentUserId = client.auth.currentUser!.id;
+
+    final friendships = await client
+        .from('friendships')
+        .select()
+        .eq('status', 'accepted')
+        .or('requester_id.eq.$currentUserId,receiver_id.eq.$currentUserId');
+
+    final friendIds = friendships.map<String>((f) {
+      return f['requester_id'] == currentUserId
+          ? f['receiver_id'] as String
+          : f['requester_id'] as String;
+    }).toList();
+
+    if (friendIds.isEmpty) return [];
+
+    final profiles = await client
+        .from('profile')
+        .select()
+        .inFilter('id', friendIds);
+
+    return profiles.map<Friend>((p) => Friend(
+      id: p['id'] ?? '',
+      username: p['username'] ?? '',
+      category: p['category'] ?? '',
+      rating: p['rating'] ?? 0,
+    )).toList();
+  }
+
+  // ─────────────────────────────────────
   // Rankings (within same category)
   // ─────────────────────────────────────
   static Future<RankInfo> fetchRanks(UserProfile profile) async {
-    // Country rank = rank by rating within same category
     final countryData = await _client
         .from('profile')
         .select('id, rating')
         .eq('category', profile.category)
         .order('rating', ascending: false);
 
-    // Division rank
     final divisionData = await _client
         .from('profile')
         .select('id, rating')
@@ -36,7 +79,6 @@ class HomeService {
         .eq('division', profile.division)
         .order('rating', ascending: false);
 
-    // District rank
     final districtData = await _client
         .from('profile')
         .select('id, rating')
@@ -44,7 +86,7 @@ class HomeService {
         .eq('district', profile.district)
         .order('rating', ascending: false);
 
-    int _findRank(List rows) {
+    int findRank(List rows) {
       for (int i = 0; i < rows.length; i++) {
         if (rows[i]['id'] == _userId) return i + 1;
       }
@@ -52,14 +94,14 @@ class HomeService {
     }
 
     return RankInfo(
-      countryRank: _findRank(countryData as List),
-      divisionRank: _findRank(divisionData as List),
-      districtRank: _findRank(districtData as List),
+      countryRank: findRank(countryData as List),
+      divisionRank: findRank(divisionData as List),
+      districtRank: findRank(districtData as List),
     );
   }
 
   // ─────────────────────────────────────
-  // Streak (from submissions table)
+  // Streak
   // ─────────────────────────────────────
   static Future<StreakInfo> fetchStreak() async {
     final data = await _client
@@ -70,7 +112,6 @@ class HomeService {
 
     final rows = data as List;
 
-    // Extract unique submission dates (local date)
     final Set<String> uniqueDays = {};
     for (final row in rows) {
       final dt = DateTime.parse(row['submitted_at']).toLocal();
@@ -81,12 +122,10 @@ class HomeService {
       final parts = s.split('-');
       return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
     }).toList()
-      ..sort((a, b) => b.compareTo(a)); // newest first
+      ..sort((a, b) => b.compareTo(a));
 
-    // Calculate current streak
     int currentStreak = 0;
     DateTime check = DateTime.now();
-    // normalise to date only
     check = DateTime(check.year, check.month, check.day);
 
     for (int i = 0; i < 365; i++) {
@@ -95,13 +134,11 @@ class HomeService {
       if (uniqueDays.contains(key)) {
         currentStreak++;
       } else {
-        // Allow gap of 1 day only for today (if user hasn't submitted yet today)
         if (i == 0) continue;
         break;
       }
     }
 
-    // Calculate longest streak
     int longestStreak = 0;
     int tempStreak = 0;
     for (int i = 0; i < activeDays.length; i++) {
@@ -126,9 +163,11 @@ class HomeService {
     );
   }
 
-
+  // ─────────────────────────────────────
+  // Badges
+  // ─────────────────────────────────────
   static List<BadgeInfo> getBadges(int rating) {
-    final badges = [
+    return [
       BadgeInfo(id: 'b1', name: 'Newcomer',   emoji: '🌱', description: 'Just getting started', requiredRating: 0,    unlocked: rating >= 0),
       BadgeInfo(id: 'b2', name: 'Apprentice', emoji: '⚡', description: 'Reach 100 rating',      requiredRating: 100,  unlocked: rating >= 100),
       BadgeInfo(id: 'b3', name: 'Scholar',    emoji: '📚', description: 'Reach 250 rating',      requiredRating: 250,  unlocked: rating >= 250),
@@ -136,16 +175,6 @@ class HomeService {
       BadgeInfo(id: 'b5', name: 'Expert',     emoji: '🏆', description: 'Reach 1000 rating',     requiredRating: 1000, unlocked: rating >= 1000),
       BadgeInfo(id: 'b6', name: 'Master',     emoji: '💎', description: 'Reach 2000 rating',     requiredRating: 2000, unlocked: rating >= 2000),
       BadgeInfo(id: 'b7', name: 'Legend',     emoji: '👑', description: 'Reach 5000 rating',     requiredRating: 5000, unlocked: rating >= 5000),
-    ];
-    return badges;
-  }
-
-  static List<Friend> getStaticFriends() {
-    return [
-      Friend(username: 'arif_cse',   rating: 340, category: 'Junior'),
-      Friend(username: 'tasnim_x',   rating: 210, category: 'Secondary'),
-      Friend(username: 'rakib_dev',  rating: 580, category: 'Junior'),
-      Friend(username: 'nusrat_99',  rating: 125, category: 'Higher Sec'),
     ];
   }
 }
