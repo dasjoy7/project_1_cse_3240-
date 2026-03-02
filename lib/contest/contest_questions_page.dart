@@ -24,6 +24,7 @@ class ContestQuestionsPage extends StatefulWidget {
 }
 
 class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
+
   List<Map<String, dynamic>> questions = [];
   Map<String, bool?> answerStatus = {};
 
@@ -52,7 +53,8 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
           .select('id')
           .eq('contest_id', widget.contestId);
       if (mounted) setState(() => _participantCount = (result as List).length);
-    } catch (e) {
+    }
+    catch (e) {
       print('Error loading participant count: $e');
     }
   }
@@ -71,9 +73,9 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
           answerStatus[question['id'].toString()] = null;
         }
       });
-
       await _loadAnswerStatus();
-    } catch (e) {
+    } 
+    catch (e) {
       print('Error loading questions: $e');
     }
   }
@@ -105,7 +107,8 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
           }
         }
       });
-    } catch (e) {
+    }
+    catch (e) {
       print('Error loading answer status: $e');
     }
   }
@@ -126,6 +129,7 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
+
       setState(() => _updateRemainingTime());
 
       if (_remainingTime.inSeconds <= 0) {
@@ -147,10 +151,12 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
       _isContestStarted = true;
     }
     _remainingTime = widget.contestEndTime.difference(now);
+
     if (_remainingTime.isNegative) {
       _remainingTime = Duration.zero;
       _isContestCompleted = true;
     }
+
   }
 
   void _notifyContestEnd() {
@@ -176,7 +182,6 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
             .single();
 
         int currentRating = (profile['rating'] as num?)?.toInt() ?? 0;
-        // contestRating may be negative — correctly subtracts when < 0
         int newRating = currentRating + contestRating;
 
         await Supabase.instance.client
@@ -230,7 +235,7 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
             Text(widget.contestSubtitle, style: const TextStyle(fontSize: 18)),
             const SizedBox(height: 20),
 
-            // ── Timer ──────────────────────────────────────────────────
+  
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -264,28 +269,29 @@ class _ContestQuestionsPageState extends State<ContestQuestionsPage> {
             ),
             const SizedBox(height: 12),
 
-            // ── Participants row ────────────────────────────────────────
+           
             Row(
               children: [
                 Icon(Icons.people_outline, size: 16, color: Colors.grey.shade600),
                 const SizedBox(width: 4),
                 Text(
-                  '$_participantCount Registered',
+                  '$_participantCount',
                   style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // ── Questions header ────────────────────────────────────────
+   
             const Text('Questions:',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
 
-            // ── Question list ────────────────────────────────────────
+
             Expanded(
               child: ListView.builder(
                 itemCount: questions.length,
+                
                 itemBuilder: (context, index) {
                   final question = questions[index];
                   final questionName = question['name'] ?? 'No Name';

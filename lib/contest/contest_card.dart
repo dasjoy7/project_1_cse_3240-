@@ -5,8 +5,8 @@ class ContestCard extends StatefulWidget {
   final String title;
   final String description;
   final String date;
-  final String time;      // start time  e.g. "14:00:00"
-  final String endTime;   // end time    e.g. "16:00:00"
+  final String time;
+  final String endTime; 
   final String category;
   final String duration;
   final VoidCallback? onAnalysisTap;
@@ -34,7 +34,7 @@ class ContestCard extends StatefulWidget {
 class _ContestCardState extends State<ContestCard> {
   late Timer _timer;
 
-  // Derived every tick
+
   bool _isRunning = false;
   bool _isCompleted = false;
   Duration _remainingToStart = Duration.zero;
@@ -122,7 +122,6 @@ class _ContestCardState extends State<ContestCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Title + status badge ──
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -150,12 +149,10 @@ class _ContestCardState extends State<ContestCard> {
             ),
             const SizedBox(height: 6),
 
-            // ── Description ──
             Text(widget.description,
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
             const SizedBox(height: 10),
 
-            // ── Meta ──
             Wrap(
               spacing: 14,
               runSpacing: 4,
@@ -167,7 +164,7 @@ class _ContestCardState extends State<ContestCard> {
               ],
             ),
 
-            // ── Countdown (upcoming only) ──
+            // Countdown
             if (!_isCompleted && !_isRunning) ...[
               const SizedBox(height: 10),
               Container(
@@ -196,7 +193,6 @@ class _ContestCardState extends State<ContestCard> {
               ),
             ],
 
-            // ── Register button (upcoming + running) ──
             if (!_isCompleted) ...[
               const SizedBox(height: 10),
               SizedBox(
@@ -207,7 +203,7 @@ class _ContestCardState extends State<ContestCard> {
                         icon: const Icon(Icons.check_circle_outline, size: 16),
                         label: const Text('Registered'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.green.shade600,
+                          foregroundColor: const Color.fromARGB(255, 98, 107, 99),
                           side: BorderSide(color: Colors.green.shade300),
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           shape: RoundedRectangleBorder(
@@ -230,7 +226,7 @@ class _ContestCardState extends State<ContestCard> {
               ),
             ],
 
-            // ── View Analysis (completed only) ──
+            // View Analysis
             if (_isCompleted && widget.onAnalysisTap != null) ...[
               const SizedBox(height: 10),
               SizedBox(
@@ -240,7 +236,7 @@ class _ContestCardState extends State<ContestCard> {
                   icon: const Icon(Icons.analytics_outlined, size: 16),
                   label: const Text('View Analysis'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple.shade500,
+                    backgroundColor: const Color.fromARGB(255, 93, 154, 211),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 10),
@@ -262,7 +258,7 @@ class _ContestCardState extends State<ContestCard> {
       children: [
         Icon(icon, size: 13, color: Colors.grey.shade500),
         const SizedBox(width: 3),
-        Text(text, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+        Text(text, style: TextStyle(fontSize: 12, color: const Color.fromARGB(255, 143, 117, 117))),
       ],
     );
   }

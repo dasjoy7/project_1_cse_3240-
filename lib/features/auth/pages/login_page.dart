@@ -154,7 +154,7 @@ class _LoginPageState extends State<LoginPage> {
                                 .resetPasswordForEmail(email);
 
                             if (context.mounted) {
-                              Navigator.pop(context); // close dialog
+                              Navigator.pop(context);
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(

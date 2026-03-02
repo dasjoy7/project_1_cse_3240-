@@ -43,6 +43,7 @@ class _ContestPageState extends State<ContestPage> {
   Future<void> fetchContests() async {
     try {
       final currentUser = supabase.auth.currentUser;
+
       if (currentUser == null) {
         setState(() => isLoading = false);
         return;
@@ -53,6 +54,7 @@ class _ContestPageState extends State<ContestPage> {
           .select('category')
           .eq('id', currentUser.id)
           .single();
+      
       userCategory = userResponse['category'] ?? '';
 
       final response = await supabase.from('contests').select('*');
@@ -68,10 +70,13 @@ class _ContestPageState extends State<ContestPage> {
 
       setState(() {
         contests = List<Map<String, dynamic>>.from(response);
+
         registrationStatus = {for (var c in contests) c['id'].toString(): regSet.contains(c['id'].toString())};
         isLoading = false;
+
         separateContestsByStatus();
       });
+
     } catch (e) {
       print('Error fetching contests: $e');
       setState(() => isLoading = false);
@@ -88,6 +93,7 @@ class _ContestPageState extends State<ContestPage> {
       final time = contest['start_time'] ?? '';
 
       DateTime contestEndTime;
+      
       try {
         contestEndTime = DateTime.parse('$date $endTime');
       } catch (e) {
@@ -200,7 +206,6 @@ class _ContestPageState extends State<ContestPage> {
         length: 2,
         child: Column(
           children: [
-            // ── Themed Tab Bar ────────────────────────────────────────────
             Container(
               color: Colors.white,
               child: Column(
@@ -265,12 +270,10 @@ class _ContestPageState extends State<ContestPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Container(height: 1, color: const Color(0xFFEAEFF6)),
                 ],
               ),
             ),
 
-            // ── Tab Content ───────────────────────────────────────────────
             Expanded(
               child: isLoading
                   ? const Center(
@@ -301,9 +304,9 @@ class _ContestPageState extends State<ContestPage> {
   }
 }
 
-// ─── Upcoming Tab ──────────────────────────────────────────────────────────────
 
 class _UpcomingTab extends StatelessWidget {
+
   final List<Map<String, dynamic>> contests;
   final Map<String, bool> registrationStatus;
   final Future<void> Function(String) onRegister;
@@ -361,11 +364,13 @@ class _UpcomingTab extends StatelessWidget {
         final contestId = contest['id'].toString();
 
         DateTime contestEndTime;
+
         try {
           contestEndTime = DateTime.parse('$date $endTime');
         } catch (e) {
           contestEndTime = DateTime.now();
         }
+
         final contestStartTime = DateTime.parse('$date $time');
         final isCompleted = DateTime.now().isAfter(contestEndTime);
         final isRunning = DateTime.now().isAfter(contestStartTime);
@@ -415,9 +420,9 @@ class _UpcomingTab extends StatelessWidget {
   }
 }
 
-// ─── Completed Tab ─────────────────────────────────────────────────────────────
 
 class _CompletedTab extends StatelessWidget {
+
   final List<Map<String, dynamic>> contests;
   final Future<void> Function(String) onNavigate;
 
@@ -469,10 +474,12 @@ class _CompletedTab extends StatelessWidget {
 
         DateTime contestStartTime;
         DateTime contestEndTimeParsed;
+
         try {
           contestStartTime = DateTime.parse('$contestDate $contestTime');
           contestEndTimeParsed = DateTime.parse('$contestDate $contestEndTime');
-        } catch (e) {
+        }
+        catch (e) {
           contestStartTime = DateTime.now();
           contestEndTimeParsed = DateTime.now();
         }

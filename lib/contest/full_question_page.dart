@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FullQuestionPage extends StatefulWidget {
+
   final String questionId;
   final bool Function() isContestCompleted;
   final String contestId;
@@ -20,6 +21,7 @@ class FullQuestionPage extends StatefulWidget {
 }
 
 class _FullQuestionPageState extends State<FullQuestionPage> {
+
   final TextEditingController _answerController = TextEditingController();
 
   String _questionText = '';
@@ -49,7 +51,7 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
     super.dispose();
   }
 
-  // ─── Load question + existing submission status from DB ──────────────────
+
   Future<void> _loadQuestionAndStatus() async {
     try {
       final question = await Supabase.instance.client
@@ -90,7 +92,7 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
     }
   }
 
-  // ─── Contest ended dialog ────────────────────────────────────────────────
+  //Contest ended dialog 
   void _showContestEndedDialog() {
     showDialog(
       context: context,
@@ -111,7 +113,6 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
     );
   }
 
-  // ─── Rating calculation from a full submission row ───────────────────────
   int _calculateRating(Map<String, dynamic> row) {
     int total = 0;
     for (int i = 1; i <= 8; i++) {
@@ -120,26 +121,17 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
       if (attempts == 0) continue;
 
       if (status == 1) {
-        // Base = serial × 10; penalty = 2 pts per wrong attempt before solving
         final base = i * 10;
         final wrongBefore = attempts - 1;
         final score = (base - wrongBefore * 2).clamp(1, base);
         total += score;
       } else if (status == 0) {
-        // −2 pts per wrong attempt, no correct yet
         total -= attempts * 2;
       }
     }
     return total;
   }
 
-  // ─── Submit answer ───────────────────────────────────────────────────────
-  //
-  //  KEY FIX: Uses upsert() instead of update().
-  //  Your RLS only has INSERT + SELECT policies — UPDATE is blocked.
-  //  upsert() issues  INSERT … ON CONFLICT (user_id, contest_id) DO UPDATE
-  //  which is covered by the INSERT policy in Supabase.
-  //
   Future<void> _submitAnswer() async {
     if (_isSubmitting) return;
     final submittedAnswer = _answerController.text.trim();
@@ -176,7 +168,6 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
     final userId = currentUser.id;
 
     try {
-      // 1. Fetch the full existing row — we need every column for upsert
       final existing = await Supabase.instance.client
           .from('contest_question_submission')
           .select('*')
@@ -194,7 +185,6 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
         return;
       }
 
-      // Never overwrite a correct answer with a wrong one
       if (existing['serial_$_serialNumber'] == 1) {
         setState(() {
           _isAlreadyCorrect = true;
@@ -203,7 +193,7 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
         return;
       }
 
-      // 2. Patch only the fields that change
+    
       final int currentAttempts =
           (existing['serial_${_serialNumber}_attempts'] as int?) ?? 0;
       final int newAttempts = currentAttempts + 1;
@@ -213,13 +203,11 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
       updatedRow['serial_$_serialNumber'] = isCorrect ? 1 : 0;
       updatedRow['serial_${_serialNumber}_attempts'] = newAttempts;
 
-      // 3. Recalculate rating from the patched row
+     
       final int newRating = _calculateRating(updatedRow);
       updatedRow['rating'] = newRating;
 
-      // 4. Upsert — INSERT … ON CONFLICT (user_id, contest_id) DO UPDATE
-      //    This works with INSERT-only RLS because Supabase evaluates the
-      //    INSERT policy for upsert operations.
+
       await Supabase.instance.client
           .from('contest_question_submission')
           .upsert(
@@ -227,17 +215,13 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
             onConflict: 'user_id,contest_id',
           );
 
-      print('✅ Upserted — serial_$_serialNumber: ${isCorrect ? 1 : 0}, '
-          'attempts: $newAttempts, rating: $newRating');
-
-      // 5. Update local UI state
+    
       setState(() {
         if (isCorrect) _isAlreadyCorrect = true;
         _answerController.clear();
         _isSubmitting = false;
       });
     } catch (e) {
-      print('Error submitting: $e');
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -292,7 +276,6 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
     );
   }
 
-  // ─── Build ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final bool isContestOver = widget.isContestCompleted();
@@ -310,7 +293,6 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Question text
                   Text(
                     _questionText.isNotEmpty
                         ? _questionText
@@ -319,7 +301,6 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Answer input — hidden when already solved or contest over
                   if (!_isAlreadyCorrect && !isContestOver) ...[
                     TextField(
                       controller: _answerController,
@@ -327,7 +308,6 @@ class _FullQuestionPageState extends State<FullQuestionPage> {
                         labelText: 'Your answer',
                         border: OutlineInputBorder(),
                       ),
-                      textInputAction: TextInputAction.done,
                       onSubmitted: (_) => _submitAnswer(),
                     ),
                     const SizedBox(height: 14),

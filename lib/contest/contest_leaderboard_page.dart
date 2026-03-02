@@ -20,7 +20,7 @@ class _ContestLeaderboardPageState extends State<ContestLeaderboardPage> {
   List<Map<String, dynamic>> leaderboard = [];
   bool isLoading = true;
   String? currentUserId;
-  int totalQuestions = 8; // actual count fetched from DB
+  int totalQuestions = 8;
 
   @override
   void initState() {
@@ -32,7 +32,7 @@ class _ContestLeaderboardPageState extends State<ContestLeaderboardPage> {
     try {
       currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
-      // Fetch actual question count for this contest
+  
       final questions = await Supabase.instance.client
           .from('questions')
           .select('serial_number')
@@ -59,7 +59,6 @@ class _ContestLeaderboardPageState extends State<ContestLeaderboardPage> {
         isLoading = false;
       });
     } catch (e) {
-      print('Error loading leaderboard: $e');
       setState(() => isLoading = false);
     }
   }
@@ -72,7 +71,7 @@ class _ContestLeaderboardPageState extends State<ContestLeaderboardPage> {
     return c;
   }
 
-  /// Per-question status squares — only renders actual questions
+
   Widget _buildQuestionGrid(Map<String, dynamic> s) {
     return Wrap(
       spacing: 4,
@@ -180,7 +179,7 @@ class _ContestLeaderboardPageState extends State<ContestLeaderboardPage> {
                             children: [
                               Row(
                                 children: [
-                                  // Rank / medal
+                                
                                   SizedBox(
                                     width: 40,
                                     child: medalIcon != null
@@ -194,7 +193,7 @@ class _ContestLeaderboardPageState extends State<ContestLeaderboardPage> {
                                           ),
                                   ),
                                   const SizedBox(width: 8),
-                                  // Name + username
+                                  
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,7 +240,7 @@ class _ContestLeaderboardPageState extends State<ContestLeaderboardPage> {
                                       ],
                                     ),
                                   ),
-                                  // Solved count + rating
+                               
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
