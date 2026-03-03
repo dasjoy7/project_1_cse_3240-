@@ -81,7 +81,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
       if (res.user == null) throw Exception("User creation failed.");
 
-      // Trigger handles profile insert automatically
       if (!mounted) return;
 
       CommonUI.showSnackBar(context, "Success! Check your email to verify account.");
